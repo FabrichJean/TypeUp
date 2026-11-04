@@ -17,6 +17,17 @@ Quand une source en ligne est injoignable, le pack retombe sur ses passages loca
 
 Les listes de mots viennent de [FrequencyWords](https://github.com/hermitdave/FrequencyWords) (Hermit Dave, issues d'OpenSubtitles), sous licence **CC BY-SA 4.0** : voir `public/words/ATTRIBUTION.md`. Elles sont filtrées au mieux contre les mots vulgaires, mais une liste issue de sous-titres peut encore contenir des noms propres ou des mots crus. Pour les régénérer : `node scripts/build-words.mjs <fr|en> <fichier_source.txt>`.
 
+## Mode Quête (roguelike de frappe)
+
+Deuxième mode, à côté de l'entraînement (onglet **Quête**). Le but : survivre le plus d'étages possible.
+
+- Des mots (tirés de la liste de fréquence) avancent vers la mascotte. La 1re lettre verrouille un mot, on le finit pour l'abattre ; Retour arrière change de cible. Un mot qui touche la mascotte coûte une vie.
+- Une erreur casse le combo (x2… x8, comme l'entraînement) et fait avancer tous les ennemis.
+- Tous les 3 étages, un **boss** : un vrai texte (Wikipédia, anecdotes, poèmes…) à taper en entier. Sa jauge de colère monte avec le temps et baisse à chaque caractère juste ; pleine, il frappe.
+- Après chaque étage, on choisit 1 relique parmi 3 (bouclier, cœur, armure, sablier, aimant à combo, mots dorés, nova, vampire, givre). Elles se cumulent.
+- Pause avec Échap (ou en quittant l'onglet). Score, étage max et nombre de parties sont gardés dans `typeup.quest`, séparément de l'historique d'entraînement : la Quête ne touche ni à l'XP ni aux records de l'entraînement.
+- Moteur pur et testé (`src/quest/engine.ts`, temps et hasard injectés). Réglages d'équilibrage : `src/quest/engine.ts` (vitesse, vagues, boss) et `src/quest/relics.ts` (reliques).
+
 ## Lancer
 
 ```bash
@@ -44,7 +55,8 @@ scripts/       build-words.mjs : prépare les listes de mots
 public/words/  fr.json, en.json (générés) et leur attribution
 src/storage/   historique/XP et préférences (localStorage, versionné)
 src/hooks/     useTypingTest : chrono + saisie
-src/components/ Game, TypingArea, Results, History, Controls, Mascot, ComboMeter
+src/quest/     mode Quête : moteur (engine.ts), reliques, contenu (mots, boss), textes
+src/components/ Game, TypingArea, Results, History, Controls, Mascot, ComboMeter, quest/ (Quest, QuestRun)
 ```
 
 Les tests sont à côté du code (`*.test.ts`).
