@@ -853,6 +853,699 @@ td {
   }
 }
 
+/* ---------- Mode Quête ---------- */
+
+.icon--xl {
+  width: 3rem;
+  height: 3rem;
+}
+
+.btn--lg {
+  padding: 14px 30px;
+  font-size: 1.1rem;
+}
+
+.tab-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+
+.quest-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.quest-menu > .icon--xl {
+  color: var(--accent);
+}
+
+.quest-menu h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.quest-tagline {
+  margin: 0;
+  color: var(--dim);
+}
+
+.quest-how {
+  max-width: 520px;
+  text-align: left;
+  color: var(--dim);
+}
+
+.quest-how h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.quest-how ol {
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+.quest-how li + li {
+  margin-top: 4px;
+}
+
+.quest-run {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quest-run .capture {
+  inset: auto 0 0 auto;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.q-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.q-hearts,
+.q-floor,
+.q-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.q-heart {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--dim);
+  transition: transform 0.2s;
+}
+
+.q-heart--full {
+  color: var(--bad);
+}
+
+.q-shield {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  color: #3d9be9;
+  font: 700 0.95rem var(--mono);
+}
+
+.q-floor {
+  font-weight: 700;
+}
+
+.q-floor small {
+  color: var(--dim);
+  font: 600 0.85rem var(--mono);
+}
+
+.q-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.q-score strong {
+  font: 800 1.5rem var(--mono);
+}
+
+.q-score small {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.q-combo {
+  min-width: 90px;
+  justify-content: flex-end;
+  color: var(--dim);
+  font: 800 1.3rem var(--mono);
+}
+
+.q-combo--on {
+  color: var(--accent);
+}
+
+.q-mult {
+  padding: 0 7px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.95rem;
+  animation: pop 0.3s ease-out;
+}
+
+/* L'arène garde le même décor sombre dans les deux thèmes : c'est une scène de jeu. */
+.q-arena {
+  --q-ink: #eceef8;
+  --q-dim: rgba(236, 238, 248, 0.55);
+  --q-gold: #ffd54a;
+  --q-hot: #ffb454;
+  --q-ok: #7ee787;
+  position: relative;
+  height: clamp(340px, 54vh, 470px);
+  overflow: hidden;
+  border: 1px solid #2b2e40;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #151833 0%, #0d0f1c 70%, #090a14 100%);
+  color: var(--q-ink);
+  box-shadow:
+    0 0 calc(var(--heat, 0) * 38px) calc(var(--heat, 0) * 6px) rgba(255, 180, 84, 0.55),
+    var(--shadow);
+  cursor: default;
+  user-select: none;
+  touch-action: manipulation;
+  transition: box-shadow 0.4s;
+}
+
+.q-arena--shake {
+  animation: q-shake 0.38s;
+}
+
+.q-arena--danger::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: inset 0 0 80px rgba(255, 60, 80, 0.5);
+  animation: q-danger 1.2s ease-in-out infinite;
+}
+
+.q-arena--frozen {
+  border-color: #6cc4ff;
+}
+
+.q-arena--frozen .q-bg {
+  filter: hue-rotate(150deg) brightness(1.25);
+}
+
+.q-arena--boss {
+  background: linear-gradient(180deg, #2a1230 0%, #130a1c 70%, #0b0610 100%);
+}
+
+.q-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* étoiles */
+    radial-gradient(1.5px 1.5px at 12% 22%, #fff 60%, transparent) 0 0 / 220px 160px,
+    radial-gradient(1px 1px at 67% 58%, #cfd6ff 60%, transparent) 0 0 / 170px 130px,
+    radial-gradient(1.5px 1.5px at 38% 80%, #ffe9c4 60%, transparent) 0 0 / 260px 190px,
+    /* sol quadrillé qui défile */
+    repeating-linear-gradient(90deg, rgba(120, 130, 255, 0.1) 0 2px, transparent 2px 70px) 0 100% / 100% 38% no-repeat,
+    linear-gradient(180deg, transparent 62%, rgba(120, 130, 255, 0.08));
+  animation: q-scroll 9s linear infinite;
+}
+
+/* Ligne à ne pas laisser franchir. */
+.q-arena::before {
+  content: '';
+  position: absolute;
+  top: 6%;
+  bottom: 6%;
+  left: 10%;
+  width: 0;
+  border-left: 2px dashed rgba(255, 107, 122, 0.35);
+  pointer-events: none;
+}
+
+.q-player {
+  position: absolute;
+  left: 1.5%;
+  top: 50%;
+  width: 78px;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 14px rgba(255, 180, 84, 0.35));
+}
+
+.q-player .mascot {
+  width: 100%;
+  height: auto;
+}
+
+.q-enemy {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 5px 10px;
+  /* --x = 1 à l'apparition : le mot est entièrement visible, collé au bord droit. */
+  transform: translate(calc(var(--x, 1) * -100%), -50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--q-ink);
+  font: 600 1.1rem var(--mono);
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+}
+
+.q-enemy .icon {
+  color: var(--q-dim);
+}
+
+.q-done {
+  color: var(--q-ok);
+}
+
+.q-enemy--lock {
+  z-index: 3;
+  border-color: var(--q-hot);
+  background: rgba(255, 180, 84, 0.18);
+  box-shadow: 0 0 18px rgba(255, 180, 84, 0.55);
+}
+
+.q-enemy--lock .icon {
+  color: var(--q-hot);
+}
+
+.q-enemy--gold {
+  border-color: var(--q-gold);
+  color: var(--q-gold);
+  box-shadow: 0 0 14px rgba(255, 213, 74, 0.4);
+}
+
+.q-enemy--gold .icon {
+  color: var(--q-gold);
+}
+
+.q-enemy--gold .q-done {
+  color: #fff3b0;
+}
+
+.q-boss {
+  position: absolute;
+  inset: 9% 5%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(8, 6, 16, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.q-boss-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.q-boss-head strong {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.q-boss-head .q-bar {
+  flex: 1;
+}
+
+.q-boss-text {
+  margin: 0;
+  color: var(--q-dim);
+  font: 500 clamp(1.05rem, 2.4vw, 1.4rem) / 1.75 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.q-cur {
+  border-radius: 3px;
+  background: var(--q-hot);
+  color: #1a1305;
+}
+
+.q-rage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--q-dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.q-rage .q-bar {
+  flex: 1;
+}
+
+.q-bar {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.q-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.12s linear;
+}
+
+.q-bar--hp span {
+  background: linear-gradient(90deg, #ff6b7a, #ffb454);
+}
+
+.q-bar--rage span {
+  background: linear-gradient(90deg, #ffd54a, #ff3d57);
+}
+
+.q-fx {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  font: 800 1.1rem var(--mono);
+  pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  animation: q-rise 0.9s ease-out forwards;
+}
+
+.q-fx--kill {
+  color: var(--q-hot);
+}
+
+.q-fx--gold {
+  color: var(--q-gold);
+  font-size: 1.5rem;
+}
+
+.q-fx--hit {
+  color: #ff6b7a;
+  font-size: 1.6rem;
+}
+
+.q-fx--heal {
+  color: var(--q-ok);
+  font-size: 1.4rem;
+}
+
+.q-fx--shield::after {
+  content: '';
+  display: block;
+  width: 70px;
+  height: 70px;
+  margin: -35px;
+  border: 3px solid #6cc4ff;
+  border-radius: 50%;
+  animation: q-ring 0.6s ease-out forwards;
+}
+
+.q-nova {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(circle at 10% 50%, rgba(255, 255, 255, 0.85), rgba(255, 213, 74, 0.35) 40%, transparent 70%);
+  animation: q-flash 0.6s ease-out forwards;
+}
+
+.q-banner {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  max-width: 90%;
+  text-align: center;
+  font: 800 clamp(1.5rem, 4vw, 2.3rem) var(--sans);
+  letter-spacing: 0.04em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  animation: q-banner 1.8s ease-out forwards;
+}
+
+.q-arena--boss .q-banner {
+  top: auto;
+  bottom: 2.5%;
+  font-size: 1.3rem;
+  color: var(--q-hot);
+}
+
+.q-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: rgba(8, 8, 16, 0.8);
+  backdrop-filter: blur(4px);
+  color: var(--q-ink);
+  text-align: center;
+  cursor: default;
+  animation: q-fade 0.25s ease-out;
+}
+
+.q-overlay h2,
+.q-overlay h3,
+.q-overlay p {
+  margin: 0;
+}
+
+.q-overlay h2 {
+  font-size: 1.8rem;
+}
+
+.q-overlay h3 {
+  margin-top: 8px;
+  color: var(--q-dim);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.q-overlay .result-grid dt {
+  color: var(--q-dim);
+}
+
+.q-overlay .btn:not(.btn--primary) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--q-ink);
+}
+
+.q-overlay--over > .icon--xl {
+  color: #ff6b7a;
+}
+
+.q-overlay--pause > .icon--xl {
+  color: var(--q-hot);
+}
+
+.q-bonus {
+  color: var(--q-gold);
+  font-weight: 700;
+}
+
+.q-hint {
+  color: var(--q-dim);
+  font-size: 0.8rem;
+}
+
+.q-offers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.q-relic {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 190px;
+  padding: 16px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.q-relic:hover,
+.q-relic:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--q-hot);
+  background: rgba(255, 180, 84, 0.12);
+}
+
+.q-relic .icon {
+  color: var(--q-hot);
+}
+
+.q-relic span {
+  color: var(--q-dim);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.q-relic small {
+  color: var(--q-gold);
+  font-weight: 700;
+}
+
+.q-relic kbd {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  color: #1a1a22;
+}
+
+.q-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.q-relics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.q-relics li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.q-relics small {
+  color: var(--dim);
+  font-weight: 700;
+}
+
+@keyframes q-scroll {
+  to {
+    background-position:
+      -220px 0,
+      -170px 0,
+      -260px 0,
+      -70px 100%,
+      0 0;
+  }
+}
+
+@keyframes q-shake {
+  10%,
+  90% {
+    transform: translate(-2px, 1px);
+  }
+  30%,
+  70% {
+    transform: translate(4px, -2px);
+  }
+  50% {
+    transform: translate(-4px, 2px);
+  }
+}
+
+@keyframes q-danger {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes q-rise {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(1.15);
+  }
+}
+
+@keyframes q-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes q-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes q-banner {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.85);
+  }
+  12%,
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+@keyframes q-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -873,5 +1566,17 @@ td {
 
   .big-wpm-value {
     font-size: 3.5rem;
+  }
+
+  .q-enemy {
+    font-size: 0.95rem;
+  }
+
+  .q-player {
+    width: 56px;
+  }
+
+  .q-relic {
+    width: 100%;
   }
 }
