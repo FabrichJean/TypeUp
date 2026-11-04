@@ -28,6 +28,21 @@ Deuxième mode, à côté de l'entraînement (onglet **Quête**). Le but : survi
 - Pause avec Échap (ou en quittant l'onglet). Score, étage max et nombre de parties sont gardés dans `typeup.quest`, séparément de l'historique d'entraînement : la Quête ne touche ni à l'XP ni aux records de l'entraînement.
 - Moteur pur et testé (`src/quest/engine.ts`, temps et hasard injectés). Réglages d'équilibrage : `src/quest/engine.ts` (vitesse, vagues, boss) et `src/quest/relics.ts` (reliques).
 
+## Mode Combat : Key Fighter (le tournoi des touches)
+
+Troisième mode (onglet **Combat**) : un jeu de combat où l'on se bat en tapant. Les adversaires sont des touches du clavier, et le sol de l'arène est un clavier géant dont les touches s'allument quand on tape.
+
+- **Attaquer** : tu as 3 coups en main (Pointe, Crochet, Capitale). Taper un mot le lance ; plus il est long, plus il frappe fort. Enchaîner sans faute gonfle les dégâts (série).
+- **Parer** : chaque attaque ennemie est annoncée par un mot rouge avec un compte à rebours. Le taper à temps pare : l'ennemi est étourdi (+50 % de dégâts) et reçoit une contre-attaque. Un coup encaissé, ou une erreur, te fige un instant. Il n'y a qu'une seule saisie : il faut choisir entre attaquer et parer.
+- **Feintes** : une attaque à bord pointillé est une fausse attaque. La parer est une erreur ; la laisser passer ouvre la garde adverse.
+- **Coup spécial** : la jauge pleine, Entrée fige l'ennemi et lance une vraie phrase (proverbe, anecdote…) à taper ; chaque bon caractère frappe, un sans-faute fait un gros bonus.
+- **Six adversaires**, chacun avec sa ruse : Espace (échauffement), Maj (mots à l'envers), Verr. Maj (feintes), Échap (mots qui s'effacent), Retour arrière (anagrammes, ses coups vident la jauge) et Ctrl+Alt+Suppr (tout à la fois, deux attaques simultanées).
+- **Choisir son adversaire** : dans le menu, un clic sur un adversaire lance un **duel** contre lui seul (victoire au premier K.O.). Le gros bouton lance le tournoi complet. Les victoires en duel sont comptées à part (`duelWins`) et ne touchent pas aux records du tournoi.
+- **Briefing animé** avant chaque duel, au début du tournoi et avant chaque nouvel adversaire : une mini-scène en boucle montre comment parer sa ruse (mot à l'envers, anagramme, lettres qui s'effacent, feinte), comment frapper ensuite et ce qui arrive si on est trop lent. Entrée lance le combat. Les scènes sont définies dans `src/fight/demo.ts` (chronologie pure et testée). Une revanche saute le briefing.
+- Entre deux combats : un peu de vie récupérée et 1 technique parmi 3 (réflexes, poings d'acier, concentration, contre-attaque, vitalité, peau dure, infirmerie).
+- Score, meilleurs résultats et parades sont gardés dans `typeup.fight`, séparément des autres modes.
+- Moteur pur et testé, y compris des tournois simulés (`src/fight/engine.ts`). Les adversaires et techniques se règlent dans `src/fight/foes.ts` (vie, cadence, durée des préparations, ruses).
+
 ## Lancer
 
 ```bash
@@ -56,7 +71,8 @@ public/words/  fr.json, en.json (générés) et leur attribution
 src/storage/   historique/XP et préférences (localStorage, versionné)
 src/hooks/     useTypingTest : chrono + saisie
 src/quest/     mode Quête : moteur (engine.ts), reliques, contenu (mots, boss), textes
-src/components/ Game, TypingArea, Results, History, Controls, Mascot, ComboMeter, quest/ (Quest, QuestRun)
+src/fight/     mode Combat : moteur (engine.ts), adversaires et techniques (foes.ts), contenu, textes
+src/components/ Game, TypingArea, Results, History, Controls, Mascot, ComboMeter, quest/ (Quest, QuestRun), fight/ (Fight, FightRun, FoeArt, KeyboardFloor)
 ```
 
 Les tests sont à côté du code (`*.test.ts`).
