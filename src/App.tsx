@@ -1,6 +1,8 @@
+import { ChartColumn, Keyboard, Swords } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controls } from './components/Controls'
 import { Game } from './components/Game'
+import { Quest } from './components/quest/Quest'
 import { History } from './components/History'
 import { Results, type RoundResult } from './components/Results'
 import { loadRoundText, type RoundText } from './content/session-text'
@@ -17,15 +19,17 @@ import {
   type SessionRecord,
 } from './storage/history'
 import { loadPrefs, savePrefs, type Prefs, type Theme } from './storage/prefs'
+import { loadQuestStats, recordRun, saveQuestStats, type QuestStats, type RunSummary } from './storage/quest'
 import { ThemeToggle } from './components/ThemeToggle'
 
-type View = 'play' | 'history'
+type View = 'play' | 'quest' | 'history'
 /** `key` identifie la demande (réglages + nonce) qui a produit ce texte. */
 type Round = RoundText & { id: number; key: string }
 
 export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [store, setStore] = useState<HistoryStore>(loadStore)
+  const [questStats, setQuestStats] = useState<QuestStats>(loadQuestStats)
   const [view, setView] = useState<View>('play')
   const [loaded, setLoaded] = useState<Round | null>(null)
   const [finished, setFinished] = useState<{ roundId: number; data: RoundResult } | null>(null)
@@ -66,10 +70,19 @@ export default function App() {
 
   const updatePrefs = useCallback((patch: Partial<Prefs>) => {
     setPrefs((p) => ({ ...p, ...patch }))
-    setView('play')
+    // Depuis l'historique, un changement de réglage ramène à l'entraînement ; la Quête reste affichée.
+    setView((v) => (v === 'history' ? 'play' : v))
   }, [])
 
   const restart = useCallback(() => setNonce((n) => n + 1), [])
+
+  const onQuestEnd = useCallback((run: RunSummary) => {
+    setQuestStats((prev) => {
+      const next = recordRun(prev, run)
+      saveQuestStats(next)
+      return next
+    })
+  }, [])
 
   const onFinish = useCallback(
     (final: TypingState, roundIdOfGame: number) => {
@@ -131,22 +144,24 @@ export default function App() {
         </div>
 
         <nav className="tabs" aria-label="Navigation">
-          <button
-            type="button"
-            className={view === 'play' ? 'on' : ''}
-            aria-current={view === 'play' ? 'page' : undefined}
-            onClick={() => setView('play')}
-          >
-            {t.play}
-          </button>
-          <button
-            type="button"
-            className={view === 'history' ? 'on' : ''}
-            aria-current={view === 'history' ? 'page' : undefined}
-            onClick={() => setView('history')}
-          >
-            {t.history}
-          </button>
+          {(
+            [
+              ['play', t.practice, Keyboard],
+              ['quest', t.quest, Swords],
+              ['history', t.history, ChartColumn],
+            ] as const
+          ).map(([id, label, Icon]) => (
+            <button
+              key={id}
+              type="button"
+              className={view === id ? 'on tab-with-icon' : 'tab-with-icon'}
+              aria-current={view === id ? 'page' : undefined}
+              onClick={() => setView(id)}
+            >
+              <Icon className="icon" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
         </nav>
 
         <div className="status">
@@ -176,7 +191,15 @@ export default function App() {
       </header>
 
       <main>
-        {view === 'history' ? (
+        {view === 'quest' ? (
+          <Quest
+            key={prefs.lang}
+            lang={prefs.lang}
+            sound={prefs.sound}
+            stats={questStats}
+            onRunEnd={onQuestEnd}
+          />
+        ) : view === 'history' ? (
           <History store={store} lang={prefs.lang} t={t} />
         ) : (
           <>
