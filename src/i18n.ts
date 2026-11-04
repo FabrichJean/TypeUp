@@ -3,6 +3,8 @@ import type { Lang } from './content/packs'
 export interface Strings {
   tagline: string
   play: string
+  practice: string
+  quest: string
   history: string
   level: string
   startHint: string
@@ -53,6 +55,8 @@ export const STRINGS: Record<Lang, Strings> = {
   fr: {
     tagline: 'Tape de vrais textes. Gagne de l\'XP.',
     play: 'Jouer',
+    practice: 'Entraînement',
+    quest: 'Quête',
     history: 'Historique',
     level: 'Niv.',
     startHint: 'Commence à taper pour lancer le chrono',
@@ -101,6 +105,8 @@ export const STRINGS: Record<Lang, Strings> = {
   en: {
     tagline: 'Type real texts. Earn XP.',
     play: 'Play',
+    practice: 'Practice',
+    quest: 'Quest',
     history: 'History',
     level: 'Lv.',
     startHint: 'Start typing to begin',
