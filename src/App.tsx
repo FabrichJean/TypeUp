@@ -1,7 +1,8 @@
-import { ChartColumn, Keyboard, Swords } from 'lucide-react'
+import { ChartColumn, Castle, Keyboard, Swords } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controls } from './components/Controls'
 import { Game } from './components/Game'
+import { Fight } from './components/fight/Fight'
 import { Quest } from './components/quest/Quest'
 import { History } from './components/History'
 import { Results, type RoundResult } from './components/Results'
@@ -19,10 +20,18 @@ import {
   type SessionRecord,
 } from './storage/history'
 import { loadPrefs, savePrefs, type Prefs, type Theme } from './storage/prefs'
+import {
+  loadFightStats,
+  recordDuel,
+  recordTournament,
+  saveFightStats,
+  type FightStats,
+  type FightSummary,
+} from './storage/fight'
 import { loadQuestStats, recordRun, saveQuestStats, type QuestStats, type RunSummary } from './storage/quest'
 import { ThemeToggle } from './components/ThemeToggle'
 
-type View = 'play' | 'quest' | 'history'
+type View = 'play' | 'quest' | 'fight' | 'history'
 /** `key` identifie la demande (réglages + nonce) qui a produit ce texte. */
 type Round = RoundText & { id: number; key: string }
 
@@ -30,6 +39,7 @@ export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [store, setStore] = useState<HistoryStore>(loadStore)
   const [questStats, setQuestStats] = useState<QuestStats>(loadQuestStats)
+  const [fightStats, setFightStats] = useState<FightStats>(loadFightStats)
   const [view, setView] = useState<View>('play')
   const [loaded, setLoaded] = useState<Round | null>(null)
   const [finished, setFinished] = useState<{ roundId: number; data: RoundResult } | null>(null)
@@ -75,6 +85,14 @@ export default function App() {
   }, [])
 
   const restart = useCallback(() => setNonce((n) => n + 1), [])
+
+  const onFightEnd = useCallback((run: FightSummary) => {
+    setFightStats((prev) => {
+      const next = run.duelFoe ? recordDuel(prev, run.duelFoe, run) : recordTournament(prev, run)
+      saveFightStats(next)
+      return next
+    })
+  }, [])
 
   const onQuestEnd = useCallback((run: RunSummary) => {
     setQuestStats((prev) => {
@@ -147,7 +165,8 @@ export default function App() {
           {(
             [
               ['play', t.practice, Keyboard],
-              ['quest', t.quest, Swords],
+              ['quest', t.quest, Castle],
+              ['fight', t.fight, Swords],
               ['history', t.history, ChartColumn],
             ] as const
           ).map(([id, label, Icon]) => (
@@ -156,10 +175,11 @@ export default function App() {
               type="button"
               className={view === id ? 'on tab-with-icon' : 'tab-with-icon'}
               aria-current={view === id ? 'page' : undefined}
+              aria-label={label}
               onClick={() => setView(id)}
             >
               <Icon className="icon" aria-hidden="true" />
-              {label}
+              <span className="tab-label">{label}</span>
             </button>
           ))}
         </nav>
@@ -191,7 +211,9 @@ export default function App() {
       </header>
 
       <main>
-        {view === 'quest' ? (
+        {view === 'fight' ? (
+          <Fight key={prefs.lang} lang={prefs.lang} sound={prefs.sound} stats={fightStats} onRunEnd={onFightEnd} />
+        ) : view === 'quest' ? (
           <Quest
             key={prefs.lang}
             lang={prefs.lang}
