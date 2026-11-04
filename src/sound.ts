@@ -64,3 +64,20 @@ export function playOver(): void {
   setTimeout(() => tone(247, 260, 'triangle', 0.18), 220)
   setTimeout(() => tone(165, 480, 'triangle', 0.18), 480)
 }
+
+/** Parade : deux notes métalliques. */
+export function playParry(): void {
+  tone(1320, 90, 'square', 0.09)
+  setTimeout(() => tone(1760, 160, 'triangle', 0.14), 60)
+}
+
+/** Coup spécial : un balayage montant. */
+export function playSuper(): void {
+  for (let i = 0; i < 6; i++) setTimeout(() => tone(330 * 2 ** (i / 4), 120, 'sawtooth', 0.08), i * 70)
+}
+
+/** K.O. : un grave qui s'effondre. */
+export function playKO(): void {
+  tone(220, 300, 'sawtooth', 0.18)
+  setTimeout(() => tone(110, 600, 'square', 0.12), 200)
+}

@@ -1,4 +1,4 @@
-import { Swords } from 'lucide-react'
+import { Castle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { Lang } from '../../content/packs'
 import { loadWordList } from '../../content/words'
@@ -54,7 +54,7 @@ export function Quest({ lang, sound, stats, onRunEnd }: Props) {
 
   return (
     <section className="quest-menu">
-      <Swords className="icon icon--xl" aria-hidden="true" />
+      <Castle className="icon icon--xl" aria-hidden="true" />
       <h2>{t.title}</h2>
       <p className="quest-tagline">{t.tagline}</p>
 

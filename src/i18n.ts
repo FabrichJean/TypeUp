@@ -5,6 +5,7 @@ export interface Strings {
   play: string
   practice: string
   quest: string
+  fight: string
   history: string
   level: string
   startHint: string
@@ -57,6 +58,7 @@ export const STRINGS: Record<Lang, Strings> = {
     play: 'Jouer',
     practice: 'Entraînement',
     quest: 'Quête',
+    fight: 'Combat',
     history: 'Historique',
     level: 'Niv.',
     startHint: 'Commence à taper pour lancer le chrono',
@@ -107,6 +109,7 @@ export const STRINGS: Record<Lang, Strings> = {
     play: 'Play',
     practice: 'Practice',
     quest: 'Quest',
+    fight: 'Fight',
     history: 'History',
     level: 'Lv.',
     startHint: 'Start typing to begin',
