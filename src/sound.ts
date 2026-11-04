@@ -43,3 +43,24 @@ export function playKey(): void {
 export function playPreview(): void {
   playDone()
 }
+
+/** Un mot abattu : plus le combo est haut, plus la note monte (gamme pentatonique). */
+const SCALE = [0, 2, 4, 7, 9]
+export function playKill(multiplier: number): void {
+  const step = Math.min(multiplier - 1, 9)
+  const semis = SCALE[step % SCALE.length] + 12 * Math.floor(step / SCALE.length)
+  tone(523 * 2 ** (semis / 12), 150, 'triangle', 0.16)
+}
+
+/** Un ennemi te touche. */
+export function playHurt(): void {
+  tone(110, 280, 'sawtooth', 0.2)
+  setTimeout(() => tone(82, 260, 'square', 0.1), 60)
+}
+
+/** Fin de partie. */
+export function playOver(): void {
+  tone(330, 220, 'triangle', 0.18)
+  setTimeout(() => tone(247, 260, 'triangle', 0.18), 220)
+  setTimeout(() => tone(165, 480, 'triangle', 0.18), 480)
+}
