@@ -1,3 +1,4 @@
+import { ChevronsUp, CornerDownLeft, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { topMistakes } from '../engine/typing'
 import { levelInfo } from '../engine/xp'
@@ -70,8 +71,18 @@ export function Results({ result, t, onRetry, onHistory }: Props) {
 
       {(isRecord || leveledUp) && (
         <div className="badges">
-          {isRecord && <span className="badge badge--record">🏆 {t.newRecord}</span>}
-          {leveledUp && <span className="badge badge--level">⬆️ {t.levelUp(levelAfter)}</span>}
+          {isRecord && (
+            <span className="badge badge--record">
+              <Trophy className="icon" aria-hidden="true" />
+              {t.newRecord}
+            </span>
+          )}
+          {leveledUp && (
+            <span className="badge badge--level">
+              <ChevronsUp className="icon" aria-hidden="true" />
+              {t.levelUp(levelAfter)}
+            </span>
+          )}
         </div>
       )}
 
@@ -124,7 +135,10 @@ export function Results({ result, t, onRetry, onHistory }: Props) {
 
       <div className="actions">
         <button type="button" className="btn btn--primary" onClick={onRetry} autoFocus>
-          {t.retry} <kbd>↵</kbd>
+          {t.retry}
+          <kbd aria-label="Entrée">
+            <CornerDownLeft className="icon" aria-hidden="true" />
+          </kbd>
         </button>
         <button type="button" className="btn" onClick={onHistory}>
           {t.seeHistory}

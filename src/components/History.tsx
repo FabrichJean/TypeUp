@@ -1,5 +1,6 @@
 import { getPack, type Lang } from '../content/packs'
 import type { Strings } from '../i18n'
+import { PackIcon } from './PackIcon'
 import { aggregateMistakes, summarize, type HistoryStore, type SessionRecord } from '../storage/history'
 
 interface Props {
@@ -112,8 +113,11 @@ export function History({ store, lang, t }: Props) {
                 <tr key={s.id}>
                   <td>{new Date(s.at).toLocaleDateString(lang)}</td>
                   <td>
-                    {pack?.emoji} {pack?.label[lang] ?? s.packId}
-                    {s.level && ` · ${t[s.level]}`}
+                    <span className="with-icon">
+                      <PackIcon id={s.packId} />
+                      {pack?.label[lang] ?? s.packId}
+                      {s.level && ` · ${t[s.level]}`}
+                    </span>
                   </td>
                   <td>{s.duration}s</td>
                   <td>

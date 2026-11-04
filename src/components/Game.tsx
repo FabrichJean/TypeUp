@@ -1,3 +1,4 @@
+import { Ghost } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { RoundText } from '../content/session-text'
 import { comboMultiplier, getMetrics, type TypingState } from '../engine/typing'
@@ -144,7 +145,12 @@ export function Game({
 
       <p className="hints">
         <span>{started ? t.restartHint : t.startHint}</span>
-        {ghostIndex !== null && <span className="ghost-note">👻 {t.ghost(Math.round(ghostWpm))}</span>}
+        {ghostIndex !== null && (
+          <span className="ghost-note with-icon">
+            <Ghost className="icon" aria-hidden="true" />
+            {t.ghost(Math.round(ghostWpm))}
+          </span>
+        )}
         {round.offline && <span className="warn-note">{t.offlineNotice}</span>}
         {round.title && (
           <span className="source">

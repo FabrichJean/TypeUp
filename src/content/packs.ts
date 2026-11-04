@@ -18,7 +18,6 @@ export type SourceId = 'wikipedia' | 'onthisday' | 'jokes' | 'poetry'
 
 export interface Pack {
   id: PackId
-  emoji: string
   label: Record<Lang, string>
   blurb: Record<Lang, string>
   /**
@@ -71,7 +70,6 @@ const FACTS_EN: readonly string[] = [
 export const PACKS: readonly Pack[] = [
   {
     id: 'words',
-    emoji: '⌨️',
     label: { fr: 'Mots', en: 'Words' },
     blurb: { fr: '20 000 mots, du courant au rare', en: '20,000 words, common to rare' },
     texts: { fr: [], en: [] },
@@ -79,7 +77,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'wiki',
-    emoji: '🌍',
     label: { fr: 'Wikipédia', en: 'Wikipedia' },
     blurb: { fr: 'Un article au hasard, en direct', en: 'A random article, live' },
     texts: { fr: FACTS_FR, en: FACTS_EN },
@@ -87,7 +84,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'onthisday',
-    emoji: '📅',
     label: { fr: 'Ce jour-là', en: 'On this day' },
     blurb: { fr: 'L\'histoire du jour, en direct', en: 'Today in history, live' },
     texts: { fr: FACTS_FR, en: FACTS_EN },
@@ -95,7 +91,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'jokes',
-    emoji: '😂',
     label: { fr: 'Blagues', en: 'Jokes' },
     blurb: { fr: 'Ne ris pas, tape', en: 'Don\'t laugh, type' },
     sources: { fr: 'jokes', en: 'jokes' },
@@ -120,7 +115,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'poems',
-    emoji: '🪶',
     label: { fr: 'Poèmes', en: 'Poems' },
     blurb: {
       fr: 'Domaine public (en ligne en anglais)',
@@ -147,7 +141,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'twisters',
-    emoji: '🌀',
     label: { fr: 'Virelangues', en: 'Tongue twisters' },
     blurb: { fr: 'Ça fait trébucher les doigts', en: 'Trips up your fingers' },
     texts: {
@@ -179,14 +172,12 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'facts',
-    emoji: '🧠',
     label: { fr: 'Faits insolites', en: 'Weird facts' },
     blurb: { fr: 'Apprends en tapant', en: 'Learn while you type' },
     texts: { fr: FACTS_FR, en: FACTS_EN },
   },
   {
     id: 'proverbs',
-    emoji: '📜',
     label: { fr: 'Proverbes', en: 'Proverbs' },
     blurb: { fr: 'La sagesse des anciens', en: 'Old wisdom' },
     texts: {
@@ -210,7 +201,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     id: 'code',
-    emoji: '💻',
     label: { fr: 'Code', en: 'Code' },
     blurb: { fr: 'Accolades, guillemets et tirets', en: 'Braces, quotes and dashes' },
     texts: { fr: CODE, en: CODE },

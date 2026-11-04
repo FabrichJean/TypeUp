@@ -1,7 +1,8 @@
+import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
 import type { Strings } from '../i18n'
 import { nextTheme, type Theme } from '../storage/prefs'
 
-const ICONS: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' }
+const ICONS: Record<Theme, LucideIcon> = { system: Monitor, light: Sun, dark: Moon }
 
 interface Props {
   theme: Theme
@@ -17,6 +18,7 @@ export function ThemeToggle({ theme, t, onChange }: Props) {
     dark: t.themeDark,
   }
   const label = `${t.theme} : ${names[theme]}`
+  const Icon = ICONS[theme]
   return (
     <button
       type="button"
@@ -25,7 +27,7 @@ export function ThemeToggle({ theme, t, onChange }: Props) {
       title={label}
       onClick={() => onChange(nextTheme(theme))}
     >
-      <span aria-hidden="true">{ICONS[theme]}</span>
+      <Icon className="icon icon--lg" aria-hidden="true" />
     </button>
   )
 }

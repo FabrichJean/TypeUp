@@ -2,6 +2,7 @@ import { PACKS } from '../content/packs'
 import { LEVELS } from '../content/words'
 import type { Strings } from '../i18n'
 import { DURATIONS, type Prefs } from '../storage/prefs'
+import { PackIcon } from './PackIcon'
 
 interface Props {
   prefs: Prefs
@@ -23,7 +24,8 @@ export function Controls({ prefs, t, onChange }: Props) {
             title={p.blurb[lang]}
             onClick={() => onChange({ packId: p.id })}
           >
-            <span aria-hidden="true">{p.emoji}</span> {p.label[lang]}
+            <PackIcon id={p.id} />
+            {p.label[lang]}
           </button>
         ))}
       </div>
