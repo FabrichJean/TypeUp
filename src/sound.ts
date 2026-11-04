@@ -22,14 +22,24 @@ function tone(freq: number, ms: number, type: OscillatorType, volume: number): v
 }
 
 export function playError(): void {
-  tone(140, 110, 'sawtooth', 0.05)
+  tone(150, 160, 'sawtooth', 0.12)
 }
 
 export function playCombo(multiplier: number): void {
-  tone(420 + multiplier * 70, 140, 'triangle', 0.06)
+  tone(420 + multiplier * 70, 180, 'triangle', 0.18)
 }
 
 export function playDone(): void {
-  tone(660, 120, 'triangle', 0.06)
-  setTimeout(() => tone(880, 200, 'triangle', 0.06), 120)
+  tone(660, 140, 'triangle', 0.18)
+  setTimeout(() => tone(880, 240, 'triangle', 0.18), 120)
+}
+
+/** Petit « clic » à chaque caractère juste. */
+export function playKey(): void {
+  tone(1100, 35, 'square', 0.04)
+}
+
+/** Aperçu quand on active l'option (et déverrouille l'audio du navigateur). */
+export function playPreview(): void {
+  playDone()
 }

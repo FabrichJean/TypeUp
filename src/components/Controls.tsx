@@ -1,6 +1,8 @@
+import { Volume2, VolumeX } from 'lucide-react'
 import { PACKS } from '../content/packs'
 import { LEVELS } from '../content/words'
 import type { Strings } from '../i18n'
+import { playPreview } from '../sound'
 import { DURATIONS, type Prefs } from '../storage/prefs'
 import { PackIcon } from './PackIcon'
 
@@ -71,8 +73,16 @@ export function Controls({ prefs, t, onChange }: Props) {
           <input
             type="checkbox"
             checked={prefs.sound}
-            onChange={(e) => onChange({ sound: e.target.checked })}
+            onChange={(e) => {
+              if (e.target.checked) playPreview()
+              onChange({ sound: e.target.checked })
+            }}
           />
+          {prefs.sound ? (
+            <Volume2 className="icon" aria-hidden="true" />
+          ) : (
+            <VolumeX className="icon" aria-hidden="true" />
+          )}
           {t.sound}
         </label>
       </div>

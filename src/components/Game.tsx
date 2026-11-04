@@ -4,7 +4,7 @@ import type { RoundText } from '../content/session-text'
 import { comboMultiplier, getMetrics, type TypingState } from '../engine/typing'
 import { useTypingTest } from '../hooks/useTypingTest'
 import type { Strings } from '../i18n'
-import { playCombo, playError } from '../sound'
+import { playCombo, playError, playKey } from '../sound'
 import { ComboMeter } from './ComboMeter'
 import { Mascot, type Mood } from './Mascot'
 import { TypingArea } from './TypingArea'
@@ -56,6 +56,10 @@ export function Game({
   useEffect(() => {
     if (sound && state.lastErrorAt !== null) playError()
   }, [state.lastErrorAt]) // eslint-disable-line -- idem
+
+  useEffect(() => {
+    if (sound && state.correctKeystrokes > 0) playKey()
+  }, [state.correctKeystrokes]) // eslint-disable-line -- idem
 
   const recentError = state.lastErrorAt !== null && now - state.lastErrorAt < 700
   const mood: Mood = recentError
