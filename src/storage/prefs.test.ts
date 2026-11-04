@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PREFS_KEY, defaultPrefs, loadPrefs, savePrefs } from './prefs'
+import { PREFS_KEY, defaultPrefs, loadPrefs, nextTheme, savePrefs } from './prefs'
 import type { KeyValueStorage } from './history'
 
 function memoryStorage(initial: Record<string, string> = {}): KeyValueStorage {
@@ -22,6 +22,7 @@ describe('prefs', () => {
       level: 'hard' as const,
       duration: 60 as const,
       sound: true,
+      theme: 'dark' as const,
     }
     savePrefs(prefs, storage)
     expect(loadPrefs(storage)).toEqual(prefs)
@@ -35,8 +36,20 @@ describe('prefs', () => {
       duration: 45,
       strictAccents: 'oui',
       sound: 1,
+      theme: 'sepia',
     })
     expect(loadPrefs(memoryStorage({ [PREFS_KEY]: raw }))).toEqual(defaultPrefs())
+  })
+
+  it('d\'anciennes préférences sans thème donnent le thème automatique', () => {
+    const raw = JSON.stringify({ lang: 'en', packId: 'code', duration: 15 })
+    expect(loadPrefs(memoryStorage({ [PREFS_KEY]: raw })).theme).toBe('system')
+  })
+
+  it('nextTheme fait tourner Auto -> Clair -> Sombre -> Auto', () => {
+    expect(nextTheme('system')).toBe('light')
+    expect(nextTheme('light')).toBe('dark')
+    expect(nextTheme('dark')).toBe('system')
   })
 
   it('résiste au JSON corrompu', () => {

@@ -4,7 +4,7 @@
   --surface-2: #f1ede6;
   --border: #e2dcd2;
   --text: #2a2a33;
-  --dim: #9a968e;
+  --dim: #8a867e;
   --accent: #e8780a;
   --accent-ink: #ffffff;
   --accent-soft: rgba(232, 120, 10, 0.14);
@@ -23,14 +23,38 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Thème sombre : choisi à la main (data-theme="dark") ou suivi du système (mode Auto). */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14151a;
+  --surface: #1d1f27;
+  --surface-2: #262935;
+  --border: #2f3240;
+  --text: #e6e7ee;
+  --dim: #7b8196;
+  --accent: #ffb454;
+  --accent-ink: #1a1305;
+  --accent-soft: rgba(255, 180, 84, 0.14);
+  --ok: #7ee787;
+  --bad: #ff6b7a;
+  --bad-soft: rgba(255, 107, 122, 0.2);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Mêmes valeurs que ci-dessus : une feuille de style ne peut pas les partager entre un
+   sélecteur d'attribut et une media query. À garder synchronisés. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14151a;
     --surface: #1d1f27;
     --surface-2: #262935;
     --border: #2f3240;
     --text: #e6e7ee;
-    --dim: #5f6477;
+    --dim: #7b8196;
     --accent: #ffb454;
     --accent-ink: #1a1305;
     --accent-soft: rgba(255, 180, 84, 0.14);
@@ -135,6 +159,27 @@ main {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.12s;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.icon-btn:active {
+  transform: translateY(1px);
 }
 
 .level {

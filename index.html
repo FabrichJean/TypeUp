@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TypeUp : entraîne ta vitesse de frappe sur de vrais textes (virelangues, blagues, poèmes, code, Wikipédia)." />
     <title>TypeUp</title>
+    <!-- Applique le thème choisi avant le premier affichage (évite un flash clair). -->
+    <script>
+      try {
+        var theme = JSON.parse(localStorage.getItem('typeup.prefs') || '{}').theme
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -16,7 +16,8 @@ import {
   type HistoryStore,
   type SessionRecord,
 } from './storage/history'
-import { loadPrefs, savePrefs, type Prefs } from './storage/prefs'
+import { loadPrefs, savePrefs, type Prefs, type Theme } from './storage/prefs'
+import { ThemeToggle } from './components/ThemeToggle'
 
 type View = 'play' | 'history'
 /** `key` identifie la demande (réglages + nonce) qui a produit ce texte. */
@@ -37,8 +38,14 @@ export default function App() {
 
   useEffect(() => {
     savePrefs(prefs)
-    document.documentElement.lang = prefs.lang
+    const root = document.documentElement
+    root.lang = prefs.lang
+    // « Auto » : pas d'attribut, la feuille de style suit le réglage du système.
+    if (prefs.theme === 'system') delete root.dataset.theme
+    else root.dataset.theme = prefs.theme
   }, [prefs])
+
+  const setTheme = useCallback((theme: Theme) => setPrefs((p) => ({ ...p, theme })), [])
 
   // Nouveau texte à chaque changement de pack / langue / durée / accents, ou sur demande.
   const { packId, lang, duration, strictAccents, level: difficulty } = prefs
@@ -151,6 +158,7 @@ export default function App() {
               <span className="xp-fill" style={{ width: `${Math.round(level.progress * 100)}%` }} />
             </span>
           </div>
+          <ThemeToggle theme={prefs.theme} t={t} onChange={setTheme} />
           <div className="segmented" role="group" aria-label="Language">
             {(['fr', 'en'] as const).map((l) => (
               <button

@@ -5,6 +5,19 @@ import { browserStorage, type KeyValueStorage } from './history'
 export const DURATIONS = [15, 30, 60] as const
 export type Duration = (typeof DURATIONS)[number]
 
+/** « system » suit le réglage du système d'exploitation. */
+export const THEMES = ['system', 'light', 'dark'] as const
+export type Theme = (typeof THEMES)[number]
+
+function isTheme(v: unknown): v is Theme {
+  return THEMES.some((t) => t === v)
+}
+
+/** Auto -> Clair -> Sombre -> Auto… */
+export function nextTheme(theme: Theme): Theme {
+  return THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]
+}
+
 export interface Prefs {
   lang: Lang
   packId: PackId
@@ -14,6 +27,7 @@ export interface Prefs {
   /** Exige les accents exacts (sinon « e » vaut « é »). */
   strictAccents: boolean
   sound: boolean
+  theme: Theme
 }
 
 export const PREFS_KEY = 'typeup.prefs'
@@ -26,6 +40,7 @@ export function defaultPrefs(): Prefs {
     duration: 30,
     strictAccents: false,
     sound: false,
+    theme: 'system',
   }
 }
 
@@ -49,6 +64,7 @@ export function loadPrefs(storage: KeyValueStorage | null = browserStorage()): P
       duration: isDuration(p.duration) ? p.duration : base.duration,
       strictAccents: typeof p.strictAccents === 'boolean' ? p.strictAccents : base.strictAccents,
       sound: typeof p.sound === 'boolean' ? p.sound : base.sound,
+      theme: isTheme(p.theme) ? p.theme : base.theme,
     }
   } catch {
     return base

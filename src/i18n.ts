@@ -20,6 +20,10 @@ export interface Strings {
   hard: string
   strictAccents: string
   sound: string
+  theme: string
+  themeSystem: string
+  themeLight: string
+  themeDark: string
   ghost: (wpm: number) => string
   inputLabel: string
   resultsTitle: string
@@ -66,6 +70,10 @@ export const STRINGS: Record<Lang, Strings> = {
     hard: 'Difficile',
     strictAccents: 'Accents stricts',
     sound: 'Sons',
+    theme: 'Thème',
+    themeSystem: 'Auto',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
     ghost: (wpm) => `Fantôme à ton record : ${wpm} WPM`,
     inputLabel: 'Zone de saisie : tape le texte affiché',
     resultsTitle: 'Terminé !',
@@ -110,6 +118,10 @@ export const STRINGS: Record<Lang, Strings> = {
     hard: 'Hard',
     strictAccents: 'Strict accents',
     sound: 'Sound',
+    theme: 'Theme',
+    themeSystem: 'Auto',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     ghost: (wpm) => `Ghost at your best: ${wpm} WPM`,
     inputLabel: 'Typing area: type the text shown',
     resultsTitle: 'Done!',
