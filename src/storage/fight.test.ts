@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FIGHT_KEY, emptyFightStats, loadFightStats, recordDuel, recordTournament, saveFightStats } from './fight'
+import { FIGHT_KEY, emptyFightStats, loadFightStats, recordDuel, recordSurvival, recordTournament, saveFightStats } from './fight'
 import type { KeyValueStorage } from './history'
 
 function memoryStorage(initial: Record<string, string> = {}): KeyValueStorage {
@@ -55,7 +55,7 @@ describe('stats du Combat', () => {
     let stats = recordTournament(emptyFightStats(), { score: 500, roundsWon: 2, cleared: false, parries: 5 })
     stats = recordTournament(stats, { score: 9000, roundsWon: 6, cleared: true, parries: 20 })
     stats = recordTournament(stats, { score: 100, roundsWon: 1, cleared: false, parries: 1 })
-    expect(stats).toEqual({ version: 1, runs: 3, clears: 1, bestRounds: 6, bestScore: 9000, totalParries: 26, duelWins: {} })
+    expect(stats).toEqual({ ...emptyFightStats(), runs: 3, clears: 1, bestRounds: 6, bestScore: 9000, totalParries: 26 })
   })
 
   it('un duel compte les parades et la victoire, sans toucher aux records du tournoi', () => {
@@ -77,9 +77,28 @@ describe('stats du Combat', () => {
     expect(loadFightStats(storage).duelWins).toEqual({ shift: 1 })
     const old = JSON.stringify({ version: 1, runs: 4, clears: 1, bestRounds: 5, bestScore: 777, totalParries: 9 })
     expect(loadFightStats(memoryStorage({ [FIGHT_KEY]: old }))).toEqual({
-      version: 1, runs: 4, clears: 1, bestRounds: 5, bestScore: 777, totalParries: 9, duelWins: {},
+      ...emptyFightStats(), runs: 4, clears: 1, bestRounds: 5, bestScore: 777, totalParries: 9,
     })
     const messy = JSON.stringify({ version: 1, runs: 0, clears: 0, bestRounds: 0, bestScore: 0, totalParries: 0, duelWins: { a: 2, b: -1, c: 'x', d: 0 } })
     expect(loadFightStats(memoryStorage({ [FIGHT_KEY]: messy })).duelWins).toEqual({ a: 2 })
+  })
+
+  it('une partie de survie garde ses records à part du tournoi', () => {
+    const base = recordTournament(emptyFightStats(), { score: 800, roundsWon: 2, cleared: false, parries: 3 })
+    let stats = recordSurvival(base, { score: 5000, roundsWon: 8, cleared: false, parries: 10, endless: true })
+    expect(stats).toEqual({ ...base, totalParries: 13, survivalRuns: 1, bestSurvival: 8, bestSurvivalScore: 5000 })
+    stats = recordSurvival(stats, { score: 100, roundsWon: 2, cleared: false, parries: 0, endless: true })
+    expect(stats.bestSurvival).toBe(8)
+    expect(stats.bestSurvivalScore).toBe(5000)
+    expect(stats.survivalRuns).toBe(2)
+    expect(stats.runs).toBe(1)
+    expect(stats.bestScore).toBe(800)
+  })
+
+  it('relit les records de survie', () => {
+    const storage = memoryStorage()
+    const stats = recordSurvival(emptyFightStats(), { score: 321, roundsWon: 7, cleared: false, parries: 1, endless: true })
+    saveFightStats(stats, storage)
+    expect(loadFightStats(storage)).toEqual(stats)
   })
 })

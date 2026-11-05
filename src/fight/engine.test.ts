@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FOE_STUN_PARRY_MS,
+  HEAL_LAP,
   INTRO_MS,
   KO_MS,
   PLAYER_HP,
@@ -23,7 +24,7 @@ import {
   type FightState,
   type Move,
 } from './engine'
-import { FOES } from './foes'
+import { FOES, LAP, foeAt, lapOf } from './foes'
 
 function seeded(seed: number): () => number {
   let a = seed
@@ -45,7 +46,7 @@ const POOL = [
 ]
 
 function move(id: number, kind: Move['kind'], word: string, typed = 0): Move {
-  return { id, kind, word, typed }
+  return { id, kind, word, typed, dealt: 0 }
 }
 
 function attack(id: number, answer: string, over: Partial<Attack> = {}): Attack {
@@ -183,6 +184,75 @@ describe('attaquer', () => {
     expect(s.lock).toBeNull()
     expect(s.hand[0].typed).toBe(0)
     expect(s.stunMs).toBeGreaterThan(0)
+  })
+})
+
+describe('chaque lettre est déjà un petit coup', () => {
+  it('une lettre juste inflige des dégâts sans attendre la fin du mot', () => {
+    const s = type(duel(), 'fene')
+    expect(s.hand[2].typed).toBe(4)
+    expect(s.stats.moves).toBe(0)
+    expect(s.foeHp).toBeLessThan(FOES[0].hp)
+    expect(s.stats.damageDealt).toBeGreaterThan(0)
+    expect(s.fx.some((f) => f.kind === 'tick')).toBe(true)
+  })
+
+  it('les lettres ne font qu\'une partie du mot : le coup final fait le reste, le total est inchangé', () => {
+    const mid = type(duel(), 'fenetr')
+    const done = type(duel(), 'fenetre')
+    expect(mid.stats.damageDealt).toBeLessThan(18 * 0.5)
+    expect(done.stats.damageDealt).toBe(18)
+    expect(done.stats.moves).toBe(1)
+  })
+
+  it('chaque lettre déclenche un petit coup : secousse légère de l\'adversaire et poings en alternance', () => {
+    const one = type(duel(), 'f')
+    const two = type(one, 'e')
+    expect(one.lastFoeHitHeavy).toBe(false)
+    expect(one.lastFoeHitAt).toBe(one.time)
+    expect(one.lastTapAt).toBe(one.time)
+    expect(one.tapSide).not.toBe(two.tapSide)
+    // Le coup final, lui, est un gros coup.
+    expect(type(duel(), 'chat').lastFoeHitHeavy).toBe(true)
+  })
+
+  it('annuler un mot garde les dégâts des lettres, sans qu\'ils soient comptés deux fois', () => {
+    let s = cancelLock(type(duel(), 'fene'))
+    const banked = s.stats.damageDealt
+    expect(banked).toBeGreaterThan(0)
+    s = tick(s, 400, seeded(1))
+    s = type(s, 'fenetre')
+    expect(s.stats.damageDealt).toBe(18)
+  })
+
+  it('une erreur au milieu d\'un mot garde aussi les lettres déjà portées', () => {
+    const s = press(type(duel(), 'fene'), 'z')
+    expect(s.stats.damageDealt).toBeGreaterThan(0)
+    expect(s.hand[2].typed).toBe(0)
+  })
+
+  it('les lettres comptent pour la série et la jauge seulement à la fin du mot', () => {
+    const s = type(duel(), 'fenet')
+    expect(s.chain).toBe(0)
+    expect(s.meter).toBe(0)
+  })
+
+  it('une lettre peut mettre K.O. sans attendre le mot entier', () => {
+    const s = type(duel({ foeHp: 1 }), 'fe')
+    expect(s.phase).toBe('ko')
+    expect(s.foeHp).toBe(0)
+  })
+
+  it('les lettres d\'une parade ne font pas de dégâts', () => {
+    const s = type(duel({ attacks: [attack(500, 'dragon')] }), 'dra')
+    expect(s.stats.damageDealt).toBe(0)
+    expect(s.lastTapAt).toBeNull()
+  })
+
+  it('un adversaire étourdi encaisse aussi des lettres plus fortes', () => {
+    const normal = type(duel(), 'fenet').stats.damageDealt
+    const stunned = type(duel({ foeStunMs: 1000 }), 'fenet').stats.damageDealt
+    expect(stunned).toBeGreaterThan(normal)
   })
 })
 
@@ -441,6 +511,79 @@ describe('K.O. et progression', () => {
       expect(pickOffers(duel(), seeded(seed), 7)).not.toContain('medic')
     }
     expect(pickOffers(duel({ hp: 50 }), seeded(1), 7)).toContain('medic')
+  })
+})
+
+describe('survie', () => {
+  const HAND = [move(901, 'jab', 'chat'), move(902, 'hook', 'pomme'), move(903, 'smash', 'fenetre')]
+  const live = (round: number, over: Partial<FightState> = {}): FightState => ({
+    ...enterRound(newFight(false, true), round, POOL, seeded(1)),
+    phase: 'fight',
+    phaseMs: 0,
+    nextAttackIn: 1e9,
+    hand: HAND,
+    ...over,
+  })
+
+  it('le premier tour est identique au tournoi', () => {
+    for (let i = 0; i < LAP; i++) expect(foeAt(i, true)).toEqual(FOES[i])
+    expect(lapOf(LAP - 1)).toBe(0)
+    expect(lapOf(LAP)).toBe(1)
+  })
+
+  it('chaque tour suivant ramène les mêmes adversaires, en plus durs', () => {
+    for (let lap = 1; lap <= 5; lap++) {
+      const base = FOES[2]
+      const foe = foeAt(lap * LAP + 2, true)
+      expect(foe.id).toBe(base.id)
+      expect(foe.hp).toBeGreaterThan(foeAt((lap - 1) * LAP + 2, true).hp)
+      expect(foe.dmg).toBeGreaterThanOrEqual(foeAt((lap - 1) * LAP + 2, true).dmg)
+      expect(foe.gap[0]).toBeLessThan(base.gap[0])
+      expect(foe.windupBase).toBeLessThan(base.windupBase)
+      expect(foe.maxAttacks).toBeLessThanOrEqual(3)
+      expect(foe.feintChance).toBeLessThanOrEqual(0.4)
+      expect(foe.heavyChance).toBeLessThanOrEqual(0.45)
+    }
+  })
+
+  it('la difficulté ne devient jamais impossible : plancher sur les délais', () => {
+    const foe = foeAt(LAP * 40 + 5, true)
+    expect(foe.gap[0]).toBeGreaterThanOrEqual(Math.round(FOES[5].gap[0] * 0.55) - 1)
+    expect(foe.windupBase).toBeGreaterThanOrEqual(Math.round(FOES[5].windupBase * 0.65) - 1)
+  })
+
+  it('au tournoi, foeAt ignore la boucle', () => {
+    expect(foeAt(3, false)).toBe(FOES[3])
+  })
+
+  it('battre le dernier adversaire ne donne pas la victoire : le combat suivant arrive', () => {
+    let s = live(LAP - 1, { foeHp: 3 })
+    s = tick(type(s, 'chat'), KO_MS + 10, seeded(1))
+    expect(s.phase).toBe('between')
+    expect(s.roundsWon).toBe(1)
+    const next = enterRound(chooseTech(s, s.offers[0]), s.round + 1, POOL, seeded(2))
+    expect(next.round).toBe(LAP)
+    expect(next.foeMax).toBe(foeAt(LAP, true).hp)
+    expect(next.foeMax).toBeGreaterThan(FOES[0].hp)
+  })
+
+  it('un tour terminé soigne davantage', () => {
+    const wounded = (round: number) => tick(type(live(round, { foeHp: 3, hp: 20 }), 'chat'), KO_MS + 10, seeded(1))
+    expect(wounded(1).hp).toBe(20 + Math.round(PLAYER_HP * 0.25))
+    expect(wounded(LAP - 1).hp).toBe(20 + Math.round(PLAYER_HP * HEAL_LAP))
+    expect(wounded(2 * LAP - 1).hp).toBe(20 + Math.round(PLAYER_HP * HEAL_LAP))
+  })
+
+  it('l\'adversaire du tour 2 a bien ses stats gonflées dans le combat', () => {
+    const s = live(LAP + 1)
+    expect(s.foeMax).toBe(foeAt(LAP + 1, true).hp)
+    expect(s.foeMax).toBeGreaterThan(FOES[1].hp)
+  })
+
+  it('un tournoi normal reste fini et un duel aussi', () => {
+    expect(newFight().endless).toBe(false)
+    expect(newFight(true).endless).toBe(false)
+    expect(newFight(false, true).endless).toBe(true)
   })
 })
 
