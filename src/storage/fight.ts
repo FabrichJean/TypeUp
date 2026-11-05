@@ -13,6 +13,10 @@ export interface FightStats {
   totalParries: number
   /** Duels gagnés, par adversaire (les duels ne comptent pas dans les records du tournoi). */
   duelWins: Record<string, number>
+  /** Survie : parties jouées, record d'adversaires battus d'affilée, meilleur score. */
+  survivalRuns: number
+  bestSurvival: number
+  bestSurvivalScore: number
 }
 
 export interface FightSummary {
@@ -22,10 +26,12 @@ export interface FightSummary {
   parries: number
   /** Renseigné pour un duel : l'adversaire affronté. Sinon, c'est un tournoi. */
   duelFoe?: string
+  /** Partie de survie (sans fin). */
+  endless?: boolean
 }
 
 export function emptyFightStats(): FightStats {
-  return { version: 1, runs: 0, clears: 0, bestRounds: 0, bestScore: 0, totalParries: 0, duelWins: {} }
+  return { version: 1, runs: 0, clears: 0, bestRounds: 0, bestScore: 0, totalParries: 0, duelWins: {}, survivalRuns: 0, bestSurvival: 0, bestSurvivalScore: 0 }
 }
 
 const count = (v: unknown): number | null =>
@@ -53,7 +59,19 @@ export function loadFightStats(storage: KeyValueStorage | null = browserStorage(
     const values = [d.runs, d.clears, d.bestRounds, d.bestScore, d.totalParries].map(count)
     if (values.some((v) => v === null)) return emptyFightStats()
     const [runs, clears, bestRounds, bestScore, totalParries] = values as number[]
-    return { version: 1, runs, clears, bestRounds, bestScore, totalParries, duelWins: parseDuelWins(d.duelWins) }
+    return {
+      version: 1,
+      runs,
+      clears,
+      bestRounds,
+      bestScore,
+      totalParries,
+      duelWins: parseDuelWins(d.duelWins),
+      // Champs ajoutés après coup : une sauvegarde plus ancienne n'en a pas.
+      survivalRuns: count(d.survivalRuns) ?? 0,
+      bestSurvival: count(d.bestSurvival) ?? 0,
+      bestSurvivalScore: count(d.bestSurvivalScore) ?? 0,
+    }
   } catch {
     return emptyFightStats()
   }
@@ -91,5 +109,16 @@ export function recordDuel(stats: FightStats, foe: string, run: FightSummary): F
     ...stats,
     totalParries: stats.totalParries + run.parries,
     duelWins: run.cleared ? { ...stats.duelWins, [foe]: (stats.duelWins[foe] ?? 0) + 1 } : stats.duelWins,
+  }
+}
+
+/** Une partie de survie : ses records restent à part de ceux du tournoi. */
+export function recordSurvival(stats: FightStats, run: FightSummary): FightStats {
+  return {
+    ...stats,
+    totalParries: stats.totalParries + run.parries,
+    survivalRuns: stats.survivalRuns + 1,
+    bestSurvival: Math.max(stats.bestSurvival, run.roundsWon),
+    bestSurvivalScore: Math.max(stats.bestSurvivalScore, Math.round(run.score)),
   }
 }

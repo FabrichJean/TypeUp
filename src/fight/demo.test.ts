@@ -106,4 +106,18 @@ describe('chronologie', () => {
     }
     expect(sceneDuration(parry, 7)).toBeGreaterThan(sceneDuration(parry, 4))
   })
+
+  it('chaque lettre du coup final est déjà un petit coup, jusqu\'à l\'arrivée des dégâts', () => {
+    const n = 4
+    const strikeStart = 2400 + 230 * n + 1700
+    const taps: number[] = []
+    for (let t = strikeStart; t < strikeStart + 140 * 5 + 1100; t += 20) {
+      const f = frameAt(parry, n, 5, t)
+      if (f.tap) taps.push(f.handTyped)
+      if (f.tap) expect(f.foe).toBe('hurt')
+      if (f.damage) expect(f.tap).toBe(false)
+    }
+    // 4 lettres sur 5 déclenchent un petit coup (la 5e est le coup final).
+    expect([...new Set(taps)]).toEqual([1, 2, 3, 4])
+  })
 })

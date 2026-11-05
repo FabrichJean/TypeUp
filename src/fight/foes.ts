@@ -124,6 +124,38 @@ export const FOES: readonly FoeDef[] = [
   },
 ]
 
+// --- Mode Survie : les mêmes adversaires, à chaque tour plus durs ------------
+
+/** Un tour complet = les 6 adversaires ; le tour suivant les ramène en plus coriaces. */
+export const LAP = FOES.length
+
+/** Numéro de tour (0 = premier passage, identique au tournoi). */
+export const lapOf = (round: number): number => Math.floor(round / LAP)
+
+/**
+ * Adversaire du combat `round`. Au tournoi, c'est `FOES[round]`. En survie, la liste boucle et
+ * chaque nouveau tour gonfle les points de vie et les dégâts, accélère les attaques et en ajoute.
+ */
+export function foeAt(round: number, endless = false): FoeDef {
+  if (!endless) return FOES[round]
+  const base = FOES[round % LAP]
+  const lap = lapOf(round)
+  if (lap === 0) return base
+  const fast = Math.max(0.55, 0.9 ** lap)
+  return {
+    ...base,
+    hp: Math.round(base.hp * (1 + 0.3 * lap)),
+    dmg: Math.round(base.dmg * (1 + 0.12 * lap)),
+    gap: [Math.round(base.gap[0] * fast), Math.round(base.gap[1] * fast)],
+    windupBase: Math.round(base.windupBase * Math.max(0.65, 0.93 ** lap)),
+    feintChance: Math.min(0.4, base.feintChance + 0.04 * lap),
+    heavyChance: Math.min(0.45, base.heavyChance + 0.04 * lap),
+    maxAttacks: Math.min(3, base.maxAttacks + (lap >= 2 ? 1 : 0)),
+    erases: base.erases || lap >= 2,
+    hue: (base.hue + 35 * lap) % 360,
+  }
+}
+
 // --- Techniques --------------------------------------------------------------
 
 export const TECH_IDS = ['reflex', 'power', 'focus', 'counter', 'vitality', 'stoneskin', 'medic'] as const
