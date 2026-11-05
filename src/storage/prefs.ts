@@ -18,6 +18,14 @@ export function nextTheme(theme: Theme): Theme {
   return THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]
 }
 
+/** Rendu des combattants du mode Combat. */
+export const FIGHT_STYLES = ['stick', 'keys'] as const
+export type FightStyle = (typeof FIGHT_STYLES)[number]
+
+function isFightStyle(v: unknown): v is FightStyle {
+  return FIGHT_STYLES.some((s) => s === v)
+}
+
 export interface Prefs {
   lang: Lang
   packId: PackId
@@ -28,6 +36,7 @@ export interface Prefs {
   strictAccents: boolean
   sound: boolean
   theme: Theme
+  fightStyle: FightStyle
 }
 
 export const PREFS_KEY = 'typeup.prefs'
@@ -41,6 +50,7 @@ export function defaultPrefs(): Prefs {
     strictAccents: false,
     sound: false,
     theme: 'system',
+    fightStyle: 'stick',
   }
 }
 
@@ -65,6 +75,7 @@ export function loadPrefs(storage: KeyValueStorage | null = browserStorage()): P
       strictAccents: typeof p.strictAccents === 'boolean' ? p.strictAccents : base.strictAccents,
       sound: typeof p.sound === 'boolean' ? p.sound : base.sound,
       theme: isTheme(p.theme) ? p.theme : base.theme,
+      fightStyle: isFightStyle(p.fightStyle) ? p.fightStyle : base.fightStyle,
     }
   } catch {
     return base

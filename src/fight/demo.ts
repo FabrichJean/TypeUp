@@ -94,8 +94,10 @@ export interface DemoFrame {
   typed: number
   /** Lettres déjà tapées du coup du joueur. */
   handTyped: number
-  /** Les dégâts du coup sont affichés. */
+  /** Les dégâts du coup final sont affichés. */
   damage: boolean
+  /** Une lettre du coup vient d'être tapée : petit coup. */
+  tap: boolean
   foe: DemoFoeMood
   /** Le joueur vient d'encaisser un coup. */
   playerHit: boolean
@@ -138,6 +140,7 @@ export function frameAt(scene: SceneDef, answerLen: number, handLen: number, t: 
     typed: 0,
     handTyped: 0,
     damage: false,
+    tap: false,
     foe: 'windup',
     playerHit: false,
     foeStrike: false,
@@ -163,6 +166,8 @@ export function frameAt(scene: SceneDef, answerLen: number, handLen: number, t: 
     const handTyped = Math.min(handLen, Math.max(0, Math.floor(since / HAND_MS)))
     const landed = handTyped >= handLen
     const landedAt = HAND_MS * handLen
+    // Chaque lettre est déjà un petit coup (tant que le mot n'est pas fini).
+    const tap = handTyped >= 1 && !landed && since - handTyped * HAND_MS < 110
     return {
       ...base,
       stage: 'strike',
@@ -171,7 +176,8 @@ export function frameAt(scene: SceneDef, answerLen: number, handLen: number, t: 
       typed: scene.kind === 'parry' ? answerLen : 0,
       handTyped,
       damage: landed,
-      foe: landed && since - landedAt < 450 ? 'hurt' : 'stunned',
+      tap,
+      foe: (landed && since - landedAt < 450) || tap ? 'hurt' : 'stunned',
     }
   }
 

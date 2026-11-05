@@ -37,6 +37,7 @@ describe('prefs', () => {
       strictAccents: 'oui',
       sound: 1,
       theme: 'sepia',
+      fightStyle: 'pixel',
     })
     expect(loadPrefs(memoryStorage({ [PREFS_KEY]: raw }))).toEqual(defaultPrefs())
   })
@@ -44,6 +45,13 @@ describe('prefs', () => {
   it('d\'anciennes préférences sans thème donnent le thème automatique', () => {
     const raw = JSON.stringify({ lang: 'en', packId: 'code', duration: 15 })
     expect(loadPrefs(memoryStorage({ [PREFS_KEY]: raw })).theme).toBe('system')
+  })
+
+  it('le style de combat est « stickmen » par défaut, et un choix valide est conservé', () => {
+    expect(defaultPrefs().fightStyle).toBe('stick')
+    const raw = JSON.stringify({ lang: 'fr', fightStyle: 'keys' })
+    expect(loadPrefs(memoryStorage({ [PREFS_KEY]: raw })).fightStyle).toBe('keys')
+    expect(loadPrefs(memoryStorage({ [PREFS_KEY]: JSON.stringify({ lang: 'fr' }) })).fightStyle).toBe('stick')
   })
 
   it('nextTheme fait tourner Auto -> Clair -> Sombre -> Auto', () => {
