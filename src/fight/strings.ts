@@ -14,6 +14,9 @@ export interface FightStrings {
   title: string
   tagline: string
   start: string
+  styleLabel: string
+  styleStick: string
+  styleKeys: string
   startTournament: string
   orPick: string
   challenge: string
@@ -23,6 +26,20 @@ export interface FightStrings {
   duelVictoryLine: (foe: string) => string
   duelDefeatLine: (foe: string) => string
   rematch: string
+  survival: string
+  survivalTagline: string
+  startSurvival: string
+  /** Combat n, tour `lap` (le tour 1 n'est pas rappelé). */
+  survivalRound: (n: number, lap: number) => string
+  lapTag: (lap: number) => string
+  lapIntro: (lap: number) => string
+  survivalOver: string
+  survivalAgain: string
+  survivalLine: (n: number) => string
+  bestSurvival: string
+  survivalRuns: string
+  announcer: { chain: readonly [string, string, string, string]; record: string; lap: (lap: number) => string }
+  coinsEarned: (n: number) => string
   briefingTitle: string
   fightNow: string
   demoLabel: (n: number, total: number) => string
@@ -94,6 +111,9 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     title: 'Key Fighter',
     tagline: 'Le tournoi des touches du clavier. Chaque mot est un coup.',
     start: 'Entrer dans l\'arène',
+    styleLabel: 'Style',
+    styleStick: 'Stickmen',
+    styleKeys: 'Touches',
     startTournament: 'Tournoi complet (6 combats)',
     orPick: 'Ou choisis ton adversaire pour un duel :',
     challenge: 'Défier',
@@ -103,6 +123,23 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     duelVictoryLine: (foe) => `${foe} est à terre.`,
     duelDefeatLine: (foe) => `${foe} a eu le dernier mot.`,
     rematch: 'Revanche',
+    survival: 'Survie',
+    survivalTagline: 'Les six touches reviennent en boucle, plus rapides et plus coriaces à chaque tour. Jusqu\'où tiendras-tu ?',
+    startSurvival: 'Mode Survie (sans fin)',
+    survivalRound: (n, lap) => (lap > 1 ? `Combat ${n} · Tour ${lap}` : `Combat ${n}`),
+    lapTag: (lap) => `Tour ${lap}`,
+    lapIntro: (lap) => `Tour ${lap} : plus fort, plus rapide, plus rusé.`,
+    survivalOver: 'Fin de la survie',
+    survivalAgain: 'Relancer la survie',
+    survivalLine: (n) => (n === 0 ? 'Tu es tombé au premier combat.' : `Tu as battu ${n} adversaire${n > 1 ? 's' : ''} d'affilée.`),
+    bestSurvival: 'Record de survie',
+    survivalRuns: 'Survies jouées',
+    announcer: {
+      chain: ['ENCHAÎNÉ !', 'EN FEU !', 'IMPARABLE !', 'LÉGENDAIRE !'],
+      record: 'NOUVEAU RECORD !',
+      lap: (lap) => `TOUR ${lap} TERMINÉ !`,
+    },
+    coinsEarned: (n) => `+${n} pièce${n > 1 ? 's' : ''}`,
     briefingTitle: 'Comment le battre',
     fightNow: 'Au combat !',
     demoLabel: (n, total) => `Démo ${n}/${total}`,
@@ -114,7 +151,7 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
       fading: 'Les lettres s\'effacent peu à peu : lis vite, puis tape !',
       type: 'Tape le mot lettre par lettre…',
       parry: 'PARADE ! Il est étourdi : tes coups font 50 % de dégâts en plus.',
-      strike: 'Profites-en : tape un de tes mots pour frapper. Plus il est long, plus ça fait mal.',
+      strike: 'Profites-en : tape un de tes mots. Chaque lettre est déjà un petit coup, le mot entier porte le coup final.',
       feintTell: 'Bord pointillé violet : c\'est une feinte !',
       feintWait: 'Ne tape rien ! Si tu la pares, c\'est toi qui es étourdi.',
       feintOpen: 'La feinte se perd dans le vide : sa garde est ouverte !',
@@ -129,7 +166,7 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     parries: 'Parades',
     howTitle: 'Comment se battre',
     how: [
-      'Tu as 3 coups en main. Tape un mot pour le lancer : plus il est long, plus il frappe fort. Enchaîne sans faute pour gonfler tes dégâts.',
+      'Tu as 3 coups en main. Chaque lettre tapée est déjà un petit coup, et le mot entier porte le coup final : plus il est long, plus il frappe fort. Enchaîne sans faute pour gonfler tes dégâts.',
       'L\'ennemi annonce chaque attaque par un mot rouge. Tape-le avant la fin du compte à rebours pour PARER : il est étourdi et prend 50 % de dégâts en plus.',
       'Un coup encaissé te fige un instant. Une erreur aussi.',
       'Une attaque à bord pointillé est une feinte : ne la pare pas ! La laisser passer ouvre sa garde.',
@@ -218,6 +255,9 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     title: 'Key Fighter',
     tagline: 'The keyboard keys tournament. Every word is a move.',
     start: 'Enter the arena',
+    styleLabel: 'Style',
+    styleStick: 'Stickmen',
+    styleKeys: 'Keys',
     startTournament: 'Full tournament (6 fights)',
     orPick: 'Or pick your opponent for a duel:',
     challenge: 'Challenge',
@@ -227,6 +267,23 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     duelVictoryLine: (foe) => `${foe} is down.`,
     duelDefeatLine: (foe) => `${foe} had the last word.`,
     rematch: 'Rematch',
+    survival: 'Survival',
+    survivalTagline: 'The six keys come back in a loop, faster and tougher every lap. How far can you go?',
+    startSurvival: 'Survival mode (endless)',
+    survivalRound: (n, lap) => (lap > 1 ? `Fight ${n} · Lap ${lap}` : `Fight ${n}`),
+    lapTag: (lap) => `Lap ${lap}`,
+    lapIntro: (lap) => `Lap ${lap}: stronger, faster, trickier.`,
+    survivalOver: 'Survival over',
+    survivalAgain: 'Restart survival',
+    survivalLine: (n) => (n === 0 ? 'You fell in the first fight.' : `You beat ${n} opponent${n > 1 ? 's' : ''} in a row.`),
+    bestSurvival: 'Survival record',
+    survivalRuns: 'Survival runs',
+    announcer: {
+      chain: ['ON A ROLL!', 'ON FIRE!', 'UNSTOPPABLE!', 'LEGENDARY!'],
+      record: 'NEW RECORD!',
+      lap: (lap) => `LAP ${lap} CLEARED!`,
+    },
+    coinsEarned: (n) => `+${n} coin${n > 1 ? 's' : ''}`,
     briefingTitle: 'How to beat it',
     fightNow: 'Fight!',
     demoLabel: (n, total) => `Demo ${n}/${total}`,
@@ -238,7 +295,7 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
       fading: 'The letters fade away: read fast, then type!',
       type: 'Type the word letter by letter…',
       parry: 'PARRY! It is stunned: your moves deal 50% more damage.',
-      strike: 'Make the most of it: type one of your words to strike. The longer, the harder.',
+      strike: 'Make the most of it: type one of your words. Every letter is already a small hit, the full word lands the finishing blow.',
       feintTell: 'Dashed purple border: it is a feint!',
       feintWait: 'Type nothing! If you parry it, you are the one who gets stunned.',
       feintOpen: 'The feint whiffs: its guard is open!',
@@ -253,7 +310,7 @@ export const FIGHT_STRINGS: Record<Lang, FightStrings> = {
     parries: 'Parries',
     howTitle: 'How to fight',
     how: [
-      'You hold 3 moves. Type a word to throw it: the longer it is, the harder it hits. Chain without mistakes to boost your damage.',
+      'You hold 3 moves. Every letter you type is already a small hit, and the full word lands the finishing blow: the longer it is, the harder it hits. Chain without mistakes to boost your damage.',
       'The enemy announces each attack with a red word. Type it before the countdown ends to PARRY: it is stunned and takes 50% more damage.',
       'Taking a hit freezes you for a moment. So does a mistake.',
       'A dashed-border attack is a feint: do not parry it! Letting it pass opens its guard.',
