@@ -5,11 +5,13 @@
 import { fold, isMatch } from '../engine/typing'
 import {
   FOES,
+  LAP,
   TECH_IDS,
   TECH_TUNING as TUNE,
   type AttackTrick,
   type FoeDef,
   type TechId,
+  foeAt,
 } from './foes'
 
 export type Phase = 'intro' | 'fight' | 'super' | 'ko' | 'between' | 'victory' | 'defeat'
@@ -23,6 +25,8 @@ export const MOVE_LEN: Record<MoveKind, readonly [number, number]> = {
   smash: [7, 9],
 }
 export const MOVE_DMG: Record<MoveKind, number> = { jab: 4, hook: 9, smash: 18 }
+/** Part des dégâts d'un mot versée lettre par lettre ; le reste tombe avec le coup final. */
+export const LETTER_SHARE = 0.4
 export const MOVE_METER: Record<MoveKind, number> = { jab: 5, hook: 10, smash: 18 }
 
 export const PLAYER_HP = 100
@@ -41,6 +45,8 @@ export const FOE_STUN_SUPER_MS = 1600
 /** Bonus de dégâts contre un adversaire étourdi. */
 export const STUN_DAMAGE = 1.5
 export const HEAL_BETWEEN = 0.25
+/** En survie, venir à bout du dernier adversaire d'un tour soigne davantage. */
+export const HEAL_LAP = 0.6
 const FX_LIFE_MS = 1100
 const SHAKE_HIT_MS = 380
 
@@ -49,6 +55,8 @@ export interface Move {
   kind: MoveKind
   word: string
   typed: number
+  /** Dégâts déjà infligés par les lettres de ce mot (le coup final ne verse que le reste). */
+  dealt: number
 }
 
 export interface Attack {
@@ -79,7 +87,7 @@ export interface SuperRun {
   errors: number
 }
 
-export type FxKind = 'dmg' | 'crit' | 'hurt' | 'parry' | 'bait' | 'whiff' | 'heal' | 'say'
+export type FxKind = 'tick' | 'dmg' | 'crit' | 'hurt' | 'parry' | 'bait' | 'whiff' | 'heal' | 'say'
 
 export interface Fx {
   id: number
@@ -104,8 +112,10 @@ export interface FightStats {
 export interface FightState {
   /** Duel contre un seul adversaire choisi : la victoire arrive au premier K.O. */
   duel: boolean
+  /** Survie : les adversaires s'enchaînent sans fin, de plus en plus durs. */
+  endless: boolean
   phase: Phase
-  /** Index de l'adversaire dans FOES. */
+  /** Index du combat (adversaire = `foeAt(round, endless)`). */
   round: number
   /** Temps de jeu écoulé (ms). */
   time: number
@@ -138,14 +148,21 @@ export interface FightState {
   // Repères d'animation (temps de jeu), null tant que l'événement n'a pas eu lieu.
   lastMoveAt: number | null
   lastMoveKind: MoveKind | null
+  /** Série au moment du dernier coup final (varie le geste : direct / croisé, crochet / uppercut…). */
+  lastMoveChain: number
   lastFoeHitAt: number | null
   lastPlayerHitAt: number | null
   lastParryAt: number | null
   lastErrorAt: number | null
+  /** Dernière lettre d'un coup (petit coup) et alternance poing avant / poing arrière. */
+  lastTapAt: number | null
+  tapSide: 0 | 1
+  /** Le dernier coup reçu par l'adversaire était un gros coup (sinon, une simple lettre). */
+  lastFoeHitHeavy: boolean
 }
 
 const stacks = (s: FightState, id: TechId): number => s.techs[id] ?? 0
-const foeOf = (s: FightState): FoeDef => FOES[s.round]
+const foeOf = (s: FightState): FoeDef => foeAt(s.round, s.endless)
 const firstLetter = (word: string): string => fold(word.charAt(0)).toLowerCase()
 const LETTER = /^\p{L}$/u
 
@@ -238,9 +255,10 @@ function emptyStats(): FightStats {
   }
 }
 
-export function newFight(duel = false): FightState {
+export function newFight(duel = false, endless = false): FightState {
   return {
     duel,
+    endless,
     phase: 'intro',
     round: 0,
     time: 0,
@@ -270,10 +288,14 @@ export function newFight(duel = false): FightState {
     stats: emptyStats(),
     lastMoveAt: null,
     lastMoveKind: null,
+    lastMoveChain: 0,
     lastFoeHitAt: null,
     lastPlayerHitAt: null,
     lastParryAt: null,
     lastErrorAt: null,
+    lastTapAt: null,
+    tapSide: 0,
+    lastFoeHitHeavy: true,
   }
 }
 
@@ -288,7 +310,7 @@ function dealHand(s: FightState, rng: () => number): FightState {
     const avoid = new Set([...hand.map((m) => firstLetter(m.word)), ...usedLetters({ ...next, hand: [] })])
     const word = pickWord(s.pool, MOVE_LEN[kind], avoid, rng)
     if (word) {
-      hand.push({ id: next.nextId, kind, word, typed: 0 })
+      hand.push({ id: next.nextId, kind, word, typed: 0, dealt: 0 })
       next = { ...next, nextId: next.nextId + 1 }
     }
   }
@@ -297,7 +319,7 @@ function dealHand(s: FightState, rng: () => number): FightState {
 
 /** Commence le combat contre l'adversaire `round` (annonce, puis combat). */
 export function enterRound(s: FightState, round: number, pool: readonly string[], rng: () => number = Math.random): FightState {
-  const foe = FOES[round]
+  const foe = foeAt(round, s.endless)
   const base: FightState = {
     ...s,
     phase: 'intro',
@@ -351,13 +373,14 @@ function koFoe(s: FightState): FightState {
   return addFx(next, 'say', 'center', 'K.O.')
 }
 
-function damageFoe(s: FightState, amount: number): FightState {
+function damageFoe(s: FightState, amount: number, heavy = true): FightState {
   const dmg = Math.min(Math.round(amount), s.foeHp)
   return {
     ...s,
     foeHp: s.foeHp - dmg,
     score: s.score + dmg,
     lastFoeHitAt: s.time,
+    lastFoeHitHeavy: heavy,
     stats: { ...s.stats, damageDealt: s.stats.damageDealt + dmg },
   }
 }
@@ -374,10 +397,36 @@ function miss(s: FightState): FightState {
   }
 }
 
+/** Dégâts totaux d'un mot (lettres + coup final), avec la série `chain` et l'état actuel de l'adversaire. */
+function moveDamage(s: FightState, kind: MoveKind, chain: number): number {
+  return Math.max(1, Math.round(MOVE_DMG[kind] * power(s) * chainBonus(chain) * (s.foeStunMs > 0 ? STUN_DAMAGE : 1)))
+}
+
+/** Une lettre juste d'un coup : déjà un petit coup, sans attendre la fin du mot. */
+function hitLetter(s: FightState, moveId: number, typed: number): FightState {
+  const move = s.hand.find((m) => m.id === moveId)
+  if (!move) return s
+  const total = moveDamage(s, move.kind, s.chain + 1)
+  // Répartition cumulée arrondie : la somme des lettres vaut exactement LETTER_SHARE du total.
+  const target = Math.round((total * LETTER_SHARE * typed) / move.word.length)
+  const amount = Math.max(0, target - move.dealt)
+  let next: FightState = {
+    ...s,
+    hand: s.hand.map((m) => (m.id === moveId ? { ...m, dealt: m.dealt + amount } : m)),
+    lastTapAt: s.time,
+    tapSide: s.tapSide === 0 ? 1 : 0,
+  }
+  if (amount === 0) return next
+  next = damageFoe(next, amount, false)
+  next = addFx(next, 'tick', 'foe', `-${amount}`)
+  return next.foeHp <= 0 ? koFoe(next) : next
+}
+
 function resolveMove(s: FightState, move: Move, rng: () => number): FightState {
   const chain = s.chain + 1
-  const stunned = s.foeStunMs > 0
-  const raw = MOVE_DMG[move.kind] * power(s) * chainBonus(chain) * (stunned ? STUN_DAMAGE : 1)
+  const total = moveDamage(s, move.kind, chain)
+  // Le coup final ne verse que ce que les lettres n'ont pas déjà infligé.
+  const finisher = Math.max(1, total - move.dealt)
   const heavy = move.kind === 'smash' || chain >= 6
   let next: FightState = {
     ...s,
@@ -387,16 +436,17 @@ function resolveMove(s: FightState, move: Move, rng: () => number): FightState {
     meter: Math.min(100, s.meter + MOVE_METER[move.kind] * focus(s)),
     lastMoveAt: s.time,
     lastMoveKind: move.kind,
+    lastMoveChain: chain,
     stats: { ...s.stats, moves: s.stats.moves + 1 },
   }
-  next = damageFoe(next, Math.max(1, raw))
-  next = addFx(next, heavy ? 'crit' : 'dmg', 'foe', `-${Math.max(1, Math.min(Math.round(raw), s.foeHp))}`)
+  next = damageFoe(next, finisher)
+  next = addFx(next, heavy ? 'crit' : 'dmg', 'foe', `-${Math.min(finisher, s.foeHp)}`)
   if (chain >= 3 && chain % 3 === 0) next = addFx(next, 'say', 'center', `x${chain}`)
   if (next.foeHp <= 0) return koFoe(next)
   // Le mot joué est remplacé par un nouveau, de même catégorie.
   const avoid = usedLetters(next, move.id)
   const word = pickWord(next.pool, MOVE_LEN[move.kind], avoid, rng)
-  const replacement: Move | null = word ? { id: next.nextId, kind: move.kind, word, typed: 0 } : null
+  const replacement: Move | null = word ? { id: next.nextId, kind: move.kind, word, typed: 0, dealt: 0 } : null
   return {
     ...next,
     nextId: next.nextId + (replacement ? 1 : 0),
@@ -494,7 +544,7 @@ function pressSuper(s: FightState, ch: string): FightState {
     stats: { ...counted.stats, correct: counted.stats.correct + 1 },
     superRun: { ...run, pos },
   }
-  next = damageFoe(next, 1.5 * power(s))
+  next = damageFoe(next, 1.5 * power(s), false)
   if (next.foeHp <= 0) return koFoe(next)
   if (pos < run.text.length) return next
   const bonus = (run.errors === 0 ? 45 : 20) * power(s)
@@ -565,7 +615,7 @@ export function press(s: FightState, ch: string, rng: () => number = Math.random
     ...advance({ ...counted, lock }, lock, typed),
     stats: { ...counted.stats, correct: counted.stats.correct + 1 },
   }
-  if (typed < word.length) return progressed
+  if (typed < word.length) return lock.kind === 'move' ? hitLetter(progressed, lock.id, typed) : progressed
 
   if (lock.kind === 'move') {
     const move = progressed.hand.find((m) => m.id === lock.id)
@@ -663,11 +713,12 @@ export function tick(s: FightState, dtMs: number, rng: () => number = Math.rando
   if (next.phase === 'ko') {
     const phaseMs = next.phaseMs - dtMs
     if (phaseMs > 0) return { ...next, phaseMs }
-    if (next.duel || next.round >= FOES.length - 1) {
+    if (next.duel || (!next.endless && next.round >= FOES.length - 1)) {
       // L'écran de victoire s'en charge : pas d'annonce en plus.
       return { ...next, phase: 'victory', score: next.score + (next.duel ? 0 : 2000) }
     }
-    const healed = Math.min(next.maxHp, next.hp + Math.round(next.maxHp * HEAL_BETWEEN))
+    const lapDone = next.endless && next.round % LAP === LAP - 1
+    const healed = Math.min(next.maxHp, next.hp + Math.round(next.maxHp * (lapDone ? HEAL_LAP : HEAL_BETWEEN)))
     const rested: FightState = { ...next, phase: 'between', hp: healed, offers: pickOffers(next, rng) }
     return healed > next.hp ? addFx(rested, 'heal', 'player', `+${healed - next.hp}`) : rested
   }

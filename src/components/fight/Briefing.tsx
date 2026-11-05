@@ -6,13 +6,19 @@ import type { Attack } from '../../fight/engine'
 import { FOES } from '../../fight/foes'
 import type { FightStrings } from '../../fight/strings'
 import { Mascot, type Mood } from '../Mascot'
+import type { FightStyle } from '../../storage/prefs'
 import { AttackCard } from './AttackCard'
 import { FoeArt } from './FoeArt'
+import { StickFighter } from './StickFighter'
+import type { PoseName } from '../../fight/poses'
+import type { Look } from '../../shop/catalog'
 
 interface Props {
   lang: Lang
   foeIndex: number
   t: FightStrings
+  fightStyle: FightStyle
+  look: Look
   onStart: () => void
 }
 
@@ -53,7 +59,8 @@ function captionFor(frame: DemoFrame, scene: SceneDef, words: { answer: string; 
 }
 
 /** Écran de présentation avant un combat : une démonstration animée de la ruse de l'adversaire. */
-export function Briefing({ lang, foeIndex, t, onStart }: Props) {
+export function Briefing({ lang, foeIndex, t, fightStyle, look, onStart }: Props) {
+  const stick = fightStyle === 'stick'
   const foe = FOES[foeIndex]
   const text = t.foes[foe.id]
   const scenes = SCENES[foe.id]
@@ -107,9 +114,24 @@ export function Briefing({ lang, foeIndex, t, onStart }: Props) {
     fadeRank: Array.from({ length: words.answer.length }, (_, i) => i),
   }
 
+  const foeStickPose: PoseName =
+    frame.tap ? 'flinch' : frame.foe === 'hurt' ? 'hurt' : frame.foe === 'stunned' ? 'stunned' : frame.foeStrike ? 'hook' : frame.foe === 'windup' ? 'windup' : 'idle'
+  const playerStickPose: PoseName = frame.playerHit
+    ? 'hurt'
+    : frame.tap
+      ? frame.handTyped % 2 === 0
+        ? 'jab'
+        : 'cross'
+    : frame.foe === 'hurt'
+      ? 'hook'
+      : frame.stage === 'parry'
+        ? 'victory'
+        : frame.stage === 'type' || frame.stage === 'feintWait'
+          ? 'guard'
+          : 'idle'
   const playerMood: Mood = frame.playerHit ? 'oops' : frame.damage ? 'hyped' : frame.stage === 'parry' ? 'happy' : 'idle'
   const foeClass = ['f-foe', `f-foe--${foe.id}`, `f-foe--${frame.foe}`, frame.foeStrike && 'f-foe--strike'].filter(Boolean).join(' ')
-  const playerClass = ['f-player', frame.playerHit && 'f-player--hurt', frame.foe === 'hurt' && 'f-player--attack f-player--hook']
+  const playerClass = ['f-player', frame.playerHit && 'f-player--hurt', frame.tap ? 'f-player--tap' : frame.foe === 'hurt' && 'f-player--attack f-player--hook']
     .filter(Boolean)
     .join(' ')
 
@@ -119,13 +141,14 @@ export function Briefing({ lang, foeIndex, t, onStart }: Props) {
       <h2>{text.name}</h2>
       <p className="f-taunt">« {text.taunt} »</p>
 
-      <div className="f-arena f-demo">
+      <div className={stick ? 'f-arena f-arena--stick f-demo' : 'f-arena f-demo'}>
         <div className="f-bg" aria-hidden="true" />
+        {stick && <div className="stick-floor" aria-hidden="true" />}
         <div className={playerClass} aria-hidden="true">
-          <Mascot mood={playerMood} />
+          {stick ? <StickFighter who="player" pose={playerStickPose} facing="right" look={look} /> : <Mascot mood={playerMood} />}
         </div>
         <div className={foeClass} aria-hidden="true">
-          <FoeArt id={foe.id} mood={frame.foe === 'hurt' ? 'hurt' : frame.foe} />
+          {stick ? <StickFighter who={foe.id} pose={foeStickPose} facing="left" /> : <FoeArt id={foe.id} mood={frame.foe === 'hurt' ? 'hurt' : frame.foe} />}
         </div>
 
         {frame.card && (
