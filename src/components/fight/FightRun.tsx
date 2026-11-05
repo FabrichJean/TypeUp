@@ -1,4 +1,5 @@
 import {
+  Coins,
   CornerDownLeft,
   Crosshair,
   Dumbbell,
@@ -32,15 +33,38 @@ import {
   tick,
   type FightState,
 } from '../../fight/engine'
-import { FOES, type TechId } from '../../fight/foes'
+import { FOES, LAP, foeAt, lapOf, type TechId } from '../../fight/foes'
+import { SLOW_FACTOR, crowdEnergy, juiceFor, mergeJuice, type Announce, type Juice } from '../../fight/juice'
 import type { FightStrings } from '../../fight/strings'
-import { playCombo, playDone, playError, playHurt, playKO, playKey, playKill, playOver, playParry, playSuper } from '../../sound'
+import { fightCoins } from '../../shop/coins'
+import type { Look } from '../../shop/catalog'
+import {
+  playAnnounce,
+  playCheer,
+  playCombo,
+  playDone,
+  playError,
+  playHurt,
+  playKO,
+  playKey,
+  playKill,
+  playOver,
+  playParry,
+  playSuper,
+  playTap,
+  playThump,
+} from '../../sound'
+import { foePose, playerPose } from '../../fight/poses'
 import type { FightSummary } from '../../storage/fight'
+import type { FightStyle } from '../../storage/prefs'
 import { Mascot, type Mood } from '../Mascot'
 import { AttackCard } from './AttackCard'
 import { Briefing } from './Briefing'
+import { StickFighter } from './StickFighter'
 import { FoeArt, type FoeMood } from './FoeArt'
+import { Crowd } from './Crowd'
 import { KeyboardFloor, type LastKey } from './KeyboardFloor'
+import { applyJuice, prefersReducedMotion } from './juiceFx'
 
 interface Props {
   lang: Lang
@@ -52,6 +76,13 @@ interface Props {
   duelFoe?: number
   /** Affiche d'abord la présentation de l'adversaire (sautée pour une revanche). */
   briefing: boolean
+  fightStyle: FightStyle
+  /** Partie de survie : les adversaires s'enchaînent sans fin. */
+  endless?: boolean
+  /** Record de survie à battre (nombre d'adversaires). */
+  bestSurvival: number
+  look: Look
+  ring: string
   onEnd: (run: FightSummary) => void
   onAgain: () => void
   onMenu: () => void
@@ -67,6 +98,17 @@ const TECH_ICONS: Record<TechId, LucideIcon> = {
   medic: Cross,
 }
 
+function summarize(s: FightState, duelFoe: number | undefined, endless: boolean): FightSummary {
+  return {
+    score: s.score,
+    roundsWon: s.roundsWon,
+    cleared: s.phase === 'victory',
+    parries: s.stats.parries,
+    duelFoe: duelFoe === undefined ? undefined : FOES[duelFoe].id,
+    endless: endless || undefined,
+  }
+}
+
 const DIGIT_INDEX: Record<string, number> = {
   Digit1: 0,
   Digit2: 1,
@@ -76,10 +118,17 @@ const DIGIT_INDEX: Record<string, number> = {
   Numpad3: 2,
 }
 
-export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: showBriefing, onEnd, onAgain, onMenu }: Props) {
+function announceText(a: Announce, t: FightStrings): string {
+  if (a.kind === 'record') return t.announcer.record
+  if (a.kind === 'lap') return t.announcer.lap(a.lap)
+  return t.announcer.chain[Math.min(a.tier, t.announcer.chain.length) - 1]
+}
+
+export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: showBriefing, fightStyle, endless = false, bestSurvival, look, ring, onEnd, onAgain, onMenu }: Props) {
+  const stick = fightStyle === 'stick'
   const duel = duelFoe !== undefined
   const pool = useMemo(() => fightPool(words), [words])
-  const [state, setState] = useState<FightState>(() => enterRound(newFight(duel), duelFoe ?? 0, pool))
+  const [state, setState] = useState<FightState>(() => enterRound(newFight(duel, endless), duelFoe ?? 0, pool))
   const [paused, setPaused] = useState(false)
   /** Adversaire dont on affiche la présentation (le jeu est alors en pause). */
   const [briefing, setBriefing] = useState<number | null>(showBriefing ? (duelFoe ?? 0) : null)
@@ -92,11 +141,34 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
   const composing = useRef(false)
   const ended = useRef(false)
   const keyCount = useRef(0)
+  const arenaRef = useRef<HTMLDivElement>(null)
+  const flashRef = useRef<HTMLDivElement>(null)
+  const linesRef = useRef<HTMLDivElement>(null)
+  /** Effets de mise en scène à jouer après le prochain rendu. */
+  const pendingJuice = useRef<Juice | null>(null)
+  /** Instants (horloge réelle) jusqu'auxquels le jeu est figé / au ralenti. */
+  const freezeUntil = useRef(0)
+  const slowUntil = useRef(0)
+  const announceCount = useRef(0)
+  const [announce, setAnnounce] = useState<{ text: string; n: number } | null>(null)
 
-  const commit = useCallback((next: FightState) => {
-    stateRef.current = next
-    setState(next)
-  }, [])
+  const commit = useCallback(
+    (next: FightState) => {
+      const before = stateRef.current
+      stateRef.current = next
+      setState(next)
+      const j = juiceFor(before, next, { bestSurvival })
+      if (!j) return
+      if (!prefersReducedMotion()) {
+        const now = performance.now()
+        if (j.freezeMs > 0) freezeUntil.current = Math.max(freezeUntil.current, now + j.freezeMs)
+        if (j.slowMs > 0) slowUntil.current = Math.max(slowUntil.current, now + j.freezeMs + j.slowMs)
+      }
+      pendingJuice.current = mergeJuice(pendingJuice.current, j)
+      if (j.announce) setAnnounce({ text: announceText(j.announce, t), n: ++announceCount.current })
+    },
+    [bestSurvival, t],
+  )
 
   const setPause = useCallback((value: boolean) => {
     pausedRef.current = value
@@ -111,9 +183,10 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
     const frame = (now: number) => {
       const dt = Math.min(now - clock.last, 50)
       clock.last = now
-      if (!pausedRef.current) {
+      // Arrêt sur image : le temps de jeu ne bouge plus ; ralenti : il s'écoule au ralenti.
+      if (!pausedRef.current && now >= freezeUntil.current) {
         const current = stateRef.current
-        const next = tick(current, dt)
+        const next = tick(current, now < slowUntil.current ? dt * SLOW_FACTOR : dt)
         if (next !== current) commit(next)
       }
       clock.raf = requestAnimationFrame(frame)
@@ -132,19 +205,29 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [setPause])
 
-  // Fin du tournoi : signalée une seule fois.
+  // Fin de la partie : signalée une seule fois.
+  const over = state.phase === 'victory' || state.phase === 'defeat'
+  const coins = over ? fightCoins(summarize(state, duelFoe, endless)) : 0
   useEffect(() => {
-    if ((state.phase === 'victory' || state.phase === 'defeat') && !ended.current) {
+    if (state.phase === 'victory' || state.phase === 'defeat') {
+      if (ended.current) return
       ended.current = true
-      onEnd({
-        score: state.score,
-        roundsWon: state.roundsWon,
-        cleared: state.phase === 'victory',
-        parries: state.stats.parries,
-        duelFoe: duelFoe === undefined ? undefined : FOES[duelFoe].id,
-      })
+      onEnd(summarize(state, duelFoe, endless))
     }
-  }, [state.phase, state.score, state.roundsWon, state.stats.parries, duelFoe, onEnd])
+  }, [state, duelFoe, endless, onEnd])
+
+  // Effets de mise en scène : une fois le rendu à jour, pour que les animations en cours existent.
+  useEffect(() => {
+    const j = pendingJuice.current
+    if (!j) return
+    pendingJuice.current = null
+    if (sound) {
+      if (j.thump) playThump()
+      if (j.cheer) playCheer(j.cheer)
+      if (j.announce) playAnnounce(j.announce.kind === 'chain' ? j.announce.tier : 4)
+    }
+    applyJuice(arenaRef.current, flashRef.current, linesRef.current, j)
+  }, [state, sound])
 
   // Sons : on compare l'état à celui de l'image précédente.
   const prev = useRef(state)
@@ -159,6 +242,7 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
     if (state.hp < p.hp) return playHurt()
     if (state.stats.parries > p.stats.parries) return playParry()
     if (state.stats.moves > p.stats.moves) return playKill(Math.min(state.chain, 8))
+    if (state.foeHp < p.foeHp && state.phase === 'fight') return playTap(state.chain)
     if (state.lastErrorAt !== p.lastErrorAt) return playError()
     if (state.chain > p.chain && state.chain % 5 === 0) return playCombo(state.chain / 5)
     if (state.stats.correct > p.stats.correct) playKey()
@@ -168,13 +252,19 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
     (id: TechId) => {
       const s = stateRef.current
       if (s.phase !== 'between' || !s.offers.includes(id)) return
+      const upgraded = chooseTech(s, id)
+      // En survie, passé le premier tour on connaît tout le monde : on enchaîne sans présentation.
+      if (s.endless && s.round + 1 >= LAP) {
+        commit(enterRound(upgraded, s.round + 1, pool))
+        return
+      }
       // La technique est prise ; on présente d'abord le prochain adversaire.
-      commit(chooseTech(s, id))
+      commit(upgraded)
       pausedRef.current = true
       briefingRef.current = s.round + 1
       setBriefing(s.round + 1)
     },
-    [commit],
+    [commit, pool],
   )
 
   const startFight = useCallback(() => {
@@ -234,9 +324,11 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
     }
   }
 
-  if (briefing !== null) return <Briefing lang={lang} foeIndex={briefing} t={t} onStart={startFight} />
+  if (briefing !== null) return <Briefing lang={lang} foeIndex={briefing} t={t} fightStyle={fightStyle} look={look} onStart={startFight} />
 
-  const foe = FOES[state.round]
+  const foe = foeAt(state.round, state.endless)
+  const lap = state.endless ? lapOf(state.round) : 0
+  const roundLabel = duel ? t.duelLabel : state.endless ? t.survivalRound(state.round + 1, lap + 1) : t.round(state.round + 1, FOES.length)
   const foeText = t.foes[foe.id]
   const playing = state.phase === 'fight' || state.phase === 'super'
   const now = state.time
@@ -265,10 +357,12 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
   const hpPct = (state.hp / state.maxHp) * 100
   const ready = superReady(state)
   const run = state.superRun
-  const isRecord = !duel && state.score > prevBest
+  const isRecord = endless ? state.roundsWon > bestSurvival && state.roundsWon > 0 : !duel && state.score > prevBest
 
   const arenaClass = [
     'f-arena',
+    stick && 'f-arena--stick',
+    stick && `f-arena--ring-${ring}`,
     state.shakeMs > 0 && 'f-arena--shake',
     state.phase === 'super' && 'f-arena--super',
     within(state.lastPlayerHitAt, 220) && 'f-arena--flash',
@@ -279,7 +373,7 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
 
   const playerClass = [
     'f-player',
-    within(state.lastMoveAt, 260) && `f-player--attack f-player--${state.lastMoveKind}`,
+    within(state.lastMoveAt, 260) ? `f-player--attack f-player--${state.lastMoveKind}` : within(state.lastTapAt, 170) && 'f-player--tap',
     within(state.lastPlayerHitAt, 320) && 'f-player--hurt',
     within(state.lastParryAt, 420) && 'f-player--parry',
     state.phase === 'super' && 'f-player--super',
@@ -313,13 +407,16 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
         </div>
 
         <div className="f-round">
-          <small>{duel ? t.duelLabel : t.round(state.round + 1, FOES.length)}</small>
+          <small>{roundLabel}</small>
           <Swords className="icon" aria-hidden="true" />
         </div>
 
         <div className="f-fighter f-fighter--right">
           <div className="f-name">
-            <strong>{foeText.name}</strong>
+            <strong>
+              {foeText.name}
+              {lap > 0 && <em className="f-lap">{t.lapTag(lap + 1)}</em>}
+            </strong>
             <small>
               {Math.ceil(state.foeHp)}/{state.foeMax}
             </small>
@@ -332,6 +429,7 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
       </div>
 
       <div
+        ref={arenaRef}
         className={arenaClass}
         onPointerDown={(e) => {
           e.preventDefault() // garde le focus sur la zone de saisie (sinon la perte de focus mettrait en pause)
@@ -340,15 +438,16 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
         }}
       >
         <div className="f-bg" aria-hidden="true" />
-        <KeyboardFloor lang={lang} last={lastKey} />
+        {stick && <Crowd energy={crowdEnergy(state)} />}
+        {stick ? <div className="stick-floor" aria-hidden="true" /> : <KeyboardFloor lang={lang} last={lastKey} />}
 
         <div className={playerClass} aria-hidden="true">
-          <Mascot mood={playerMood} />
+          {stick ? <StickFighter who="player" pose={playerPose(state)} facing="right" look={look} /> : <Mascot mood={playerMood} />}
           {within(state.lastParryAt, 420) && <span className="f-guard" />}
         </div>
 
         <div className={foeClass} aria-hidden="true">
-          <FoeArt id={foe.id} mood={foeMood} />
+          {stick ? <StickFighter who={foe.id} pose={foePose(state)} facing="left" hue={foe.hue} /> : <FoeArt id={foe.id} mood={foeMood} />}
           {foeMood === 'stunned' && (
             <span className="f-stars">
               <i />
@@ -357,6 +456,9 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
             </span>
           )}
         </div>
+
+        {stick && within(state.lastFoeHitAt, 260) && <span key={`ih${state.lastFoeHitAt}`} className={`f-impact f-impact--foe ${state.lastFoeHitHeavy ? '' : 'f-impact--small'}`} aria-hidden="true" />}
+        {stick && within(state.lastPlayerHitAt, 260) && <span key={`ip${state.lastPlayerHitAt}`} className="f-impact f-impact--player" aria-hidden="true" />}
 
         {state.chain >= 2 && (
           <div className="f-chain" key={state.chain}>
@@ -370,6 +472,14 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
             {state.attacks.map((a) => (
               <AttackCard key={a.id} a={a} locked={state.lock?.kind === 'attack' && state.lock.id === a.id} t={t} />
             ))}
+          </div>
+        )}
+
+        <div ref={linesRef} className="f-lines" aria-hidden="true" />
+        <div ref={flashRef} className="f-flash" aria-hidden="true" />
+        {announce && (
+          <div key={announce.n} className="f-announce" role="status">
+            {announce.text}
           </div>
         )}
 
@@ -398,10 +508,11 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
 
         {state.phase === 'intro' && (
           <div className="q-overlay f-intro">
-            <small>{duel ? t.duelLabel : t.round(state.round + 1, FOES.length)}</small>
+            <small>{roundLabel}</small>
             <h2>{foeText.name}</h2>
             <p className="f-taunt">« {foeText.taunt} »</p>
             <p className="f-tip">{foeText.tip}</p>
+            {lap > 0 && <p className="f-lapintro">{t.lapIntro(lap + 1)}</p>}
           </div>
         )}
 
@@ -438,21 +549,29 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
         {(state.phase === 'victory' || state.phase === 'defeat') && (
           <div className="q-overlay q-overlay--over">
             {state.phase === 'victory' ? <Trophy className="icon icon--xl f-gold" aria-hidden="true" /> : <Skull className="icon icon--xl" aria-hidden="true" />}
-            <h2>{state.phase === 'victory' ? (duel ? t.duelVictory : t.victory) : t.defeat}</h2>
+            <h2>{state.phase === 'victory' ? (duel ? t.duelVictory : t.victory) : endless ? t.survivalOver : t.defeat}</h2>
             <p>
               {state.phase === 'victory'
                 ? duel
                   ? t.duelVictoryLine(foeText.name)
                   : t.victoryLine
-                : duel
-                  ? t.duelDefeatLine(foeText.name)
-                  : t.defeatLine(state.round + 1, FOES.length)}
+                : endless
+                  ? t.survivalLine(state.roundsWon)
+                  : duel
+                    ? t.duelDefeatLine(foeText.name)
+                    : t.defeatLine(state.round + 1, FOES.length)}
             </p>
             {isRecord && (
               <span className="badge badge--record">
                 <Trophy className="icon" aria-hidden="true" />
                 {t.newBest}
               </span>
+            )}
+            {coins > 0 && (
+              <p className="f-coins">
+                <Coins className="icon" aria-hidden="true" />
+                {t.coinsEarned(coins)}
+              </p>
             )}
             <dl className="result-grid">
               <div>
@@ -481,7 +600,7 @@ export function FightRun({ lang, words, sound, t, prevBest, duelFoe, briefing: s
             <div className="actions">
               <button type="button" className="btn btn--primary" onPointerDown={(e) => e.stopPropagation()} onClick={onAgain} autoFocus>
                 <RotateCcw className="icon" aria-hidden="true" />
-                {duel ? t.rematch : t.again}
+                {duel ? t.rematch : endless ? t.survivalAgain : t.again}
               </button>
               <button type="button" className="btn" onPointerDown={(e) => e.stopPropagation()} onClick={onMenu}>
                 {t.menu}
