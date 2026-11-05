@@ -1,15 +1,20 @@
-import { ChartColumn, Castle, Keyboard, Swords } from 'lucide-react'
+import { ChartColumn, Castle, Keyboard, ShoppingBag, Swords } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controls } from './components/Controls'
 import { Game } from './components/Game'
 import { Fight } from './components/fight/Fight'
 import { Quest } from './components/quest/Quest'
+import { Purse } from './components/shop/Purse'
+import { Shop } from './components/shop/Shop'
 import { History } from './components/History'
 import { Results, type RoundResult } from './components/Results'
 import { loadRoundText, type RoundText } from './content/session-text'
 import { getMetrics, type TypingState } from './engine/typing'
 import { computeXp, levelInfo } from './engine/xp'
 import { STRINGS } from './i18n'
+import { fightCoins, practiceCoins, questCoins } from './shop/coins'
+import { lookOf, type ItemId } from './shop/catalog'
+import { SHOP_STRINGS } from './shop/strings'
 import { playDone } from './sound'
 import {
   addSession,
@@ -23,15 +28,17 @@ import { loadPrefs, savePrefs, type Prefs, type Theme } from './storage/prefs'
 import {
   loadFightStats,
   recordDuel,
+  recordSurvival,
   recordTournament,
   saveFightStats,
   type FightStats,
   type FightSummary,
 } from './storage/fight'
+import { buy, earn, equip, loadWallet, saveWallet, type Wallet } from './storage/wallet'
 import { loadQuestStats, recordRun, saveQuestStats, type QuestStats, type RunSummary } from './storage/quest'
 import { ThemeToggle } from './components/ThemeToggle'
 
-type View = 'play' | 'quest' | 'fight' | 'history'
+type View = 'play' | 'quest' | 'fight' | 'shop' | 'history'
 /** `key` identifie la demande (réglages + nonce) qui a produit ce texte. */
 type Round = RoundText & { id: number; key: string }
 
@@ -40,6 +47,7 @@ export default function App() {
   const [store, setStore] = useState<HistoryStore>(loadStore)
   const [questStats, setQuestStats] = useState<QuestStats>(loadQuestStats)
   const [fightStats, setFightStats] = useState<FightStats>(loadFightStats)
+  const [wallet, setWallet] = useState<Wallet>(loadWallet)
   const [view, setView] = useState<View>('play')
   const [loaded, setLoaded] = useState<Round | null>(null)
   const [finished, setFinished] = useState<{ roundId: number; data: RoundResult } | null>(null)
@@ -86,21 +94,59 @@ export default function App() {
 
   const restart = useCallback(() => setNonce((n) => n + 1), [])
 
-  const onFightEnd = useCallback((run: FightSummary) => {
-    setFightStats((prev) => {
-      const next = run.duelFoe ? recordDuel(prev, run.duelFoe, run) : recordTournament(prev, run)
-      saveFightStats(next)
+  /** Crédite des pièces et sauvegarde le portefeuille. */
+  const pay = useCallback((amount: number) => {
+    if (amount <= 0) return
+    setWallet((w) => {
+      const next = earn(w, amount)
+      saveWallet(next)
       return next
     })
   }, [])
 
-  const onQuestEnd = useCallback((run: RunSummary) => {
-    setQuestStats((prev) => {
-      const next = recordRun(prev, run)
-      saveQuestStats(next)
+  const onBuy = useCallback((id: ItemId) => {
+    setWallet((w) => {
+      const next = buy(w, id)
+      if (next !== w) saveWallet(next)
       return next
     })
   }, [])
+
+  const onEquip = useCallback((id: ItemId) => {
+    setWallet((w) => {
+      const next = equip(w, id)
+      if (next !== w) saveWallet(next)
+      return next
+    })
+  }, [])
+
+  const onFightEnd = useCallback(
+    (run: FightSummary) => {
+      setFightStats((prev) => {
+        const next = run.endless
+          ? recordSurvival(prev, run)
+          : run.duelFoe
+            ? recordDuel(prev, run.duelFoe, run)
+            : recordTournament(prev, run)
+        saveFightStats(next)
+        return next
+      })
+      pay(fightCoins(run))
+    },
+    [pay],
+  )
+
+  const onQuestEnd = useCallback(
+    (run: RunSummary) => {
+      setQuestStats((prev) => {
+        const next = recordRun(prev, run)
+        saveQuestStats(next)
+        return next
+      })
+      pay(questCoins(run))
+    },
+    [pay],
+  )
 
   const onFinish = useCallback(
     (final: TypingState, roundIdOfGame: number) => {
@@ -131,6 +177,7 @@ export default function App() {
       storeRef.current = next
       setStore(next)
       if (next !== prev) saveStore(next)
+      if (m.correctChars > 0) pay(practiceCoins(xp))
       if (prefs.sound) playDone()
       setFinished({
         roundId: roundIdOfGame,
@@ -143,10 +190,12 @@ export default function App() {
         },
       })
     },
-    [packId, lang, levelKey, duration, prefs.sound],
+    [packId, lang, levelKey, duration, prefs.sound, pay],
   )
 
   const level = levelInfo(store.xp)
+  const shopText = SHOP_STRINGS[prefs.lang]
+  const look = lookOf(wallet.equipped)
 
   return (
     <div className="app">
@@ -167,6 +216,7 @@ export default function App() {
               ['play', t.practice, Keyboard],
               ['quest', t.quest, Castle],
               ['fight', t.fight, Swords],
+              ['shop', shopText.tab, ShoppingBag],
               ['history', t.history, ChartColumn],
             ] as const
           ).map(([id, label, Icon]) => (
@@ -185,6 +235,7 @@ export default function App() {
         </nav>
 
         <div className="status">
+          <Purse coins={wallet.coins} label={shopText.coins} onClick={() => setView('shop')} />
           <div className="level" title={`${level.into}/${level.needed} XP`}>
             <span className="level-badge">
               {t.level} {level.level}
@@ -212,7 +263,19 @@ export default function App() {
 
       <main>
         {view === 'fight' ? (
-          <Fight key={prefs.lang} lang={prefs.lang} sound={prefs.sound} stats={fightStats} onRunEnd={onFightEnd} />
+          <Fight
+            key={prefs.lang}
+            lang={prefs.lang}
+            sound={prefs.sound}
+            stats={fightStats}
+            fightStyle={prefs.fightStyle}
+            onStyle={(fightStyle) => updatePrefs({ fightStyle })}
+            onRunEnd={onFightEnd}
+            look={look}
+            ring={wallet.equipped.ring}
+          />
+        ) : view === 'shop' ? (
+          <Shop key={prefs.lang} lang={prefs.lang} wallet={wallet} onBuy={onBuy} onEquip={onEquip} />
         ) : view === 'quest' ? (
           <Quest
             key={prefs.lang}

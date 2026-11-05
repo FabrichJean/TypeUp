@@ -81,3 +81,65 @@ export function playKO(): void {
   tone(220, 300, 'sawtooth', 0.18)
   setTimeout(() => tone(110, 600, 'square', 0.12), 200)
 }
+
+/** Une lettre qui porte : petit coup sec, un peu plus aigu quand la série monte. */
+export function playTap(chain: number): void {
+  tone(200 + Math.min(chain, 12) * 18, 50, 'square', 0.1)
+}
+
+/** Gros impact : un grave qui chute, avec un claquement. */
+export function playThump(): void {
+  try {
+    ctx ??= new AudioContext()
+    if (ctx.state === 'suspended') void ctx.resume()
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(180, now)
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.22)
+    gain.gain.setValueAtTime(0.32, now)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.27)
+  } catch {
+    // pas d'audio : tant pis
+  }
+}
+
+/** Foule : un souffle de bruit filtré qui monte puis retombe (1 = applaudissements, 2 = ovation). */
+export function playCheer(level: 1 | 2): void {
+  try {
+    ctx ??= new AudioContext()
+    if (ctx.state === 'suspended') void ctx.resume()
+    const seconds = level === 2 ? 1.1 : 0.55
+    const length = Math.floor(ctx.sampleRate * seconds)
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = level === 2 ? 1500 : 1900
+    filter.Q.value = 0.7
+    const gain = ctx.createGain()
+    const now = ctx.currentTime
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(level === 2 ? 0.16 : 0.09, now + seconds * 0.25)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds)
+    src.connect(filter).connect(gain).connect(ctx.destination)
+    src.start(now)
+  } catch {
+    // pas d'audio : tant pis
+  }
+}
+
+/** Annonceur : une petite fanfare qui monte avec le palier. */
+export function playAnnounce(tier: number): void {
+  const base = 392 * 2 ** (Math.min(tier, 4) / 12)
+  tone(base, 110, 'square', 0.07)
+  setTimeout(() => tone(base * 1.25, 110, 'square', 0.07), 90)
+  setTimeout(() => tone(base * 1.5, 220, 'square', 0.08), 180)
+}
